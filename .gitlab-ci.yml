@@ -1,8 +1,8 @@
 variables:
-  APP_NAME: "th2-message-sender-backend"
+  APP_NAME: "th2-act-ui-backend"
   MAJOR_VERSION: "0"
-  MINOR_VERSION: "0"
-  MAINTENANCE_VERSION: '0'
+  MINOR_VERSION: "1"
+  MAINTENANCE_VERSION: '1'
   INSPECTION_ENABLED: 'false'
 
 include:
