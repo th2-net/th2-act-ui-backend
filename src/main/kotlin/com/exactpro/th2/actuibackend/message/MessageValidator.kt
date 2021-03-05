@@ -22,11 +22,17 @@ import com.exactpro.sf.common.messages.structures.impl.MessageStructure
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.schema.SchemaParser
+import mu.KotlinLogging
 import kotlin.collections.set
 
 class MessageValidator(
     val configuration: Configuration, private val schemaParser: SchemaParser
 ) {
+
+    companion object {
+        val logger = KotlinLogging.logger { }
+    }
+
     @Throws(SchemaValidateException::class)
     private fun recursiveTraversal(xmlField: IFieldStructure, messageField: Any, notUseParent: Boolean = false) {
         if (xmlField is MessageStructure) {
@@ -40,9 +46,7 @@ class MessageValidator(
                     messageMap[field.key]?.let {
                         currentLevelFields[field.key] = true
                         recursiveTraversal(field.value, it)
-                    } ?: if (field.value.isRequired) throw SchemaValidateException(
-                        "Required field: '${field.key}' " + "does not exist in message: $messageField"
-                    )
+                    } ?: if (field.value.isRequired) logger.warn("Required field: '${field.key}' " + "does not exist in message: $messageField")
                 }
                 val incorrectFields = currentLevelFields.entries.filter { !it.value }.map { it.key }
                 if (incorrectFields.isNotEmpty()) throw SchemaValidateException("Unknown fields in message: $incorrectFields")
