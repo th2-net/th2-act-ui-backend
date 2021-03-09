@@ -51,7 +51,7 @@ class Main(args: Array<String>) {
     private val timeout = context.timeout
     private val cacheControl = context.cacheControl
     private val schemaParser = SchemaParser(configuration, jacksonMapper)
-    private val rabbitMqService = RabbitMqService(configuration)
+    private val rabbitMqService = RabbitMqService(context)
     private val messageValidator = MessageValidator(configuration, schemaParser)
     private val protoSchemaCache = ProtoSchemaCache(context, schemaParser)
     private val actGrpcService = GrpcService(context, protoSchemaCache, schemaParser, rabbitMqService.parentEventId)
@@ -159,8 +159,7 @@ class Main(args: Array<String>) {
                     handleRequest(call, "message", cacheControl, queryParametersMap) {
                         val message = MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
                         messageValidator.validate(message)
-                        rabbitMqService.sendMessage(message, rabbitMqService.parentEventId)
-                        mapOf("parentEvent" to rabbitMqService.parentEventId.id).also {
+                        rabbitMqService.sendMessage(message, rabbitMqService.parentEventId).also {
                             call.response.cacheControl(CacheControl.NoCache(null))
                         }
                     }
