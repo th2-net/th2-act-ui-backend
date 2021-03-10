@@ -25,6 +25,9 @@ import com.exactpro.th2.actuibackend.protobuf.ProtoSchemaCache
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.actuibackend.services.grpc.GrpcService
 import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
+import com.exactpro.th2.common.event.Event
+import com.exactpro.th2.common.event.IBodyData
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.application.*
@@ -157,10 +160,26 @@ class Main(args: Array<String>) {
                     val queryParametersMap = call.request.queryParameters.toMap()
                     val rawMessage = call.receiveText()
                     handleRequest(call, "message", cacheControl, queryParametersMap) {
-                        val message = MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
-                        messageValidator.validate(message)
-                        rabbitMqService.sendMessage(message, rabbitMqService.parentEventId)
-                        mapOf("parentEvent" to rabbitMqService.parentEventId.id).also {
+
+                        val request = MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
+                        messageValidator.validate(request)
+
+                        try {
+                            rabbitMqService.sendMessage(request, rabbitMqService.parentEventId)
+                            saveMessageRequestEvent(rabbitMqService, request, true, jacksonMapper)
+                        } catch (e: Exception) {
+                            saveMessageRequestEvent(rabbitMqService, request, false, jacksonMapper, e.toString())
+                        }
+
+
+
+                        mapOf(
+                            "eventId" to rabbitMqService.parentEventId.id,
+                            "session" to request.session,
+                            "dictionary" to request.dictionary,
+                            "messageType" to request.messageType
+
+                        ).also {
                             call.response.cacheControl(CacheControl.NoCache(null))
                         }
                     }
@@ -211,6 +230,34 @@ class Main(args: Array<String>) {
 
         logger.info { "serving on: http://${configuration.hostname.value}:${configuration.port.value}" }
     }
+}
+
+fun saveMessageRequestEvent(rabbitMqService: RabbitMqService, request: MessageSendRequest, success: Boolean, jacksonMapper: ObjectMapper, errorData: String? = "") {
+    rabbitMqService.createAndStoreEvent(
+        "act-ui message send request",
+        rabbitMqService.parentEventId.id,
+        "",
+        if (success) Event.Status.PASSED else Event.Status.FAILED,
+        "act-ui",
+        object : Iterable<Any>, IBodyData {
+            override fun iterator(): Iterator<Any> {
+                return listOf(
+                    object {
+                        val type = "message"
+                        val data = request.run { "session=$session dictionary=$dictionary messageType=$messageType" }
+                    },
+                    object {
+                        val type = "message"
+                        val data = jacksonMapper.writeValueAsString(request.message)
+                    },
+                    object {
+                        val type = "message"
+                        val data = errorData ?: "message sent successfully"
+                    }
+                ).iterator()
+            }
+        }
+    )
 }
 
 

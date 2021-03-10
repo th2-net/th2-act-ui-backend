@@ -24,6 +24,7 @@ import com.exactpro.th2.actuibackend.services.grpc.createMessageFromRequest
 import com.exactpro.th2.common.event.Event
 import com.exactpro.th2.common.event.Event.Status.PASSED
 import com.exactpro.th2.common.event.Event.start
+import com.exactpro.th2.common.event.IBodyData
 import com.exactpro.th2.common.grpc.EventBatch
 import com.exactpro.th2.common.grpc.EventID
 import com.exactpro.th2.common.grpc.Message
@@ -44,7 +45,7 @@ class RabbitMqService(private val configuration: Configuration) {
     private val actName = "sendMessage"
     private val description = "Message sender backend root event"
 
-    val parentEventId = createAndStoreParentEvent(actName, null, description, PASSED)
+    val parentEventId = createAndStoreEvent(actName, null, description, PASSED, "act-ui-root", null)
 
     private fun sendMessage(message: Message, sessionAlias: String?, parentEventId: EventID) {
         try {
@@ -54,16 +55,27 @@ class RabbitMqService(private val configuration: Configuration) {
                 ).build(), sessionAlias
             )
         } catch (e: Exception) {
-            logger.error(e) {  }
+            logger.error(e) { }
             throw InvalidRequestException("Can not send message. Session alias: '$sessionAlias' message: $message")
         }
     }
 
     @Throws(JsonProcessingException::class, InvalidRequestException::class)
-    private fun createAndStoreParentEvent(
-        actName: String, parentEventId: String?, description: String, status: Event.Status
+    fun createAndStoreEvent(
+        name: String, parentEventId: String?, description: String, status: Event.Status, type: String, data: IBodyData?
     ): EventID {
-        val event = start().name(actName).description(description).type(actName).status(status).endTimestamp()
+        val event = start()
+            .name(name)
+            .description(description)
+            .type(type)
+            .status(status)
+            .also { event ->
+                data?.let {
+                    event.bodyData(it)
+                }
+            }
+            .endTimestamp()
+
         val protoEvent = event.toProtoEvent(parentEventId)
         return try {
             configuration.eventRouter.send(
@@ -71,7 +83,7 @@ class RabbitMqService(private val configuration: Configuration) {
             )
             protoEvent.id
         } catch (e: IOException) {
-            logger.error(e) {  }
+            logger.error(e) { }
             throw InvalidRequestException("Can not send event:  '${protoEvent.id.id}'")
         }
     }
