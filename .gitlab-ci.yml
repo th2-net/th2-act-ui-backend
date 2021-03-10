@@ -1,0 +1,11 @@
+variables:
+  APP_NAME: "th2-act-ui-backend"
+  MAJOR_VERSION: "0"
+  MINOR_VERSION: "1"
+  MAINTENANCE_VERSION: '2'
+  INSPECTION_ENABLED: 'false'
+
+include:
+  - project: 'vivarium/th2/pipelines'
+    ref: master
+    file: '/.gitlab-ci-java.yml'
