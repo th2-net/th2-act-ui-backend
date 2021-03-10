@@ -43,9 +43,9 @@ class RabbitMqService(private val configuration: Configuration) {
     }
 
     private val actName = "sendMessage"
-    private val description = "Message sender backend root event"
+    private val description = "act-ui root event"
 
-    val parentEventId = createAndStoreEvent(actName, null, description, PASSED, "act-ui-root", null)
+    val parentEventId = createAndStoreEvent(actName, null, description, PASSED, "act-ui", null)
 
     private fun sendMessage(message: Message, sessionAlias: String?, parentEventId: EventID) {
         try {
