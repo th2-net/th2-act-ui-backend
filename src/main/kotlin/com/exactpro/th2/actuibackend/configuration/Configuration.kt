@@ -32,8 +32,8 @@ class CustomConfigurationClass {
     val protoCompileDirectory: String = "src/main/resources/protobuf"
     val namespace: String = "th2-qa"
     val actTypes: Set<String> = setOf("th2-act")
-    val schemaCacheExpiry = 0//24 * 60 * 60
-    val protoCacheExpiry = 0//60 * 60
+    val schemaCacheExpiry = 24 * 60 * 60
+    val protoCacheExpiry = 60 * 60
     val protoCacheSize = 100
     val getSchemaRetryCount = 10
     val getSchemaRetryDelay = 1
