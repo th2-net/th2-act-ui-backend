@@ -1,8 +1,8 @@
 variables:
   APP_NAME: "th2-act-ui-backend"
   MAJOR_VERSION: "0"
-  MINOR_VERSION: "1"
-  MAINTENANCE_VERSION: '4'
+  MINOR_VERSION: "2"
+  MAINTENANCE_VERSION: '0'
   INSPECTION_ENABLED: 'false'
 
 include:
