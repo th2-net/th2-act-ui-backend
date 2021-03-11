@@ -22,6 +22,7 @@ import com.exactpro.sf.common.messages.structures.IDictionaryStructure
 import com.exactpro.sf.common.messages.structures.IFieldStructure
 import com.exactpro.sf.common.messages.structures.impl.MessageStructure
 import com.exactpro.sf.common.messages.structures.loaders.XmlDictionaryStructureLoader
+import com.exactpro.th2.actuibackend.configuration.Variable
 import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
@@ -35,6 +36,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.apache.http.client.HttpResponseException
@@ -53,6 +55,9 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
         private const val JSON_TREE = "jsonTree"
         private const val SCHEMA_NAME = "http://json-schema.org/draft-07/schema#"
     }
+
+    private val getSchemaRetryCount = configuration.getSchemaRetryCount.value.toLong()
+    private val getSchemaRetryDelay = configuration.getSchemaRetryDelay.value.toLong()
 
     private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
     private val jsonTreeCache: Cache<String, JsonNode> = manager.createCache(
@@ -73,17 +78,31 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
     @KtorExperimentalAPI
     private suspend fun getSchemaXml(): ByteArray {
         return withContext(Dispatchers.IO) {
-            HttpClient().use { httpClient ->
-                val response = httpClient.request<HttpResponse> {
-                    url(configuration.schemaXMLLink.value)
-                    method = HttpMethod.Get
+            val httpClient = HttpClient()
+            var retries = 0
+            var byteArray: ByteArray? = null
+            do {
+                var needRetry = false
+                try {
+                    val response = httpClient.request<HttpResponse> {
+                        url(configuration.schemaXMLLink.value)
+                        method = HttpMethod.Get
+                    }
+                    logger.debug("get schema response status: ${response.status}")
+                    if (response.status != HttpStatusCode.OK) {
+                        logger.error { "Bad response. Status: '${response.status.value}' description: ${response.status.description}" }
+                        needRetry = true
+                    } else {
+                        byteArray = response.content.toByteArray()
+                    }
+                } catch (cause: Throwable) {
+                    logger.error(cause) { "Can not get schema. Retry: $retries" }
+                    needRetry = true
                 }
-                logger.debug("get schema response status: ${response.status}")
-                if (response.status != HttpStatusCode.OK) throw HttpResponseException(
-                    response.status.value, response.status.description
-                )
-                response.content.toByteArray()
-            }
+                if (needRetry) delay(getSchemaRetryDelay)
+            } while (needRetry && retries++ < getSchemaRetryCount)
+
+            byteArray ?: throw Exception("Can not get schema")
         }
     }
 
@@ -142,7 +161,11 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
         }.filter { rootElements.contains(it.key) }
     }
 
-    private fun createDataMap(xmlField: IFieldStructure, rootElements: MutableSet<String>, schemaName: String? = null): DataMap {
+    private fun createDataMap(
+        xmlField: IFieldStructure,
+        rootElements: MutableSet<String>,
+        schemaName: String? = null
+    ): DataMap {
         return xmlField.fields.entries.let { entries ->
             val properties = entries.associate {
                 it.key to recursiveTraversal(it.value, rootElements)
