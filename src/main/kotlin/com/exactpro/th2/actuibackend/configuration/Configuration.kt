@@ -17,6 +17,7 @@
 import com.exactpro.th2.actuibackend.configuration.Variable
 import com.exactpro.th2.common.grpc.EventBatch
 import com.exactpro.th2.common.grpc.MessageBatch
+import com.exactpro.th2.common.grpc.Value
 import com.exactpro.th2.common.schema.factory.CommonFactory
 import com.exactpro.th2.common.schema.message.MessageRouter
 
@@ -31,12 +32,14 @@ class CustomConfigurationClass {
     val protoCompileDirectory: String = "src/main/resources/protobuf"
     val namespace: String = "th2-qa"
     val actTypes: Set<String> = setOf("th2-act")
-    val schemaCacheExpiry = 120
-    val protoCacheExpiry = 120
+    val schemaCacheExpiry = 0//24 * 60 * 60
+    val protoCacheExpiry = 0//60 * 60
     val protoCacheSize = 100
+    val getSchemaRetryCount = 10
+    val getSchemaRetryDelay = 1
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize)"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay)"
     }
 }
 
@@ -86,12 +89,16 @@ class Configuration(args: Array<String>) {
     }
 
     val schemaCacheExpiry: Variable =
-        Variable("schemaCacheExpiry", customConfiguration.schemaCacheExpiry.toString(), "120")
+        Variable("schemaCacheExpiry", customConfiguration.schemaCacheExpiry.toString(), "86400")
 
     val protoCacheExpiry: Variable =
-        Variable("protoCacheExpiry", customConfiguration.protoCacheExpiry.toString(), "120")
+        Variable("protoCacheExpiry", customConfiguration.protoCacheExpiry.toString(), "3600")
     val protoCacheSize: Variable =
         Variable("protoCacheSize", customConfiguration.protoCacheSize.toString(), "100")
+
+    val getSchemaRetryCount: Variable = Variable("getSchemaRetryCount", customConfiguration.getSchemaRetryCount.toString(), "10")
+
+    val getSchemaRetryDelay: Variable = Variable("getSchemaRetryDelay", customConfiguration.getSchemaRetryDelay.toString(), "1")
 }
 
 
