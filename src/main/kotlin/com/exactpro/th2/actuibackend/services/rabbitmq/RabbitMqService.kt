@@ -29,6 +29,7 @@ import com.exactpro.th2.common.grpc.EventBatch
 import com.exactpro.th2.common.grpc.EventID
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageBatch
+import com.exactpro.th2.common.value.toValue
 import com.fasterxml.jackson.core.JsonProcessingException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -42,7 +43,7 @@ class RabbitMqService(private val configuration: Configuration) {
         val logger = KotlinLogging.logger { }
     }
 
-    private val actName = "sendMessage"
+    private val actName = "act-ui messages"
     private val description = "act-ui root event"
 
     val parentEventId = createAndStoreEvent(actName, null, description, PASSED, "act-ui", null)
@@ -62,7 +63,7 @@ class RabbitMqService(private val configuration: Configuration) {
 
     @Throws(JsonProcessingException::class, InvalidRequestException::class)
     fun createAndStoreEvent(
-        name: String, parentEventId: String?, description: String, status: Event.Status, type: String, data: IBodyData?
+        name: String, parentEventId: String?, description: String, status: Event.Status, type: String, data: List<IBodyData>?
     ): EventID {
         val event = start()
             .name(name)
@@ -71,7 +72,9 @@ class RabbitMqService(private val configuration: Configuration) {
             .status(status)
             .also { event ->
                 data?.let {
-                    event.bodyData(it)
+                    for (item in it) {
+                        event.bodyData(item)
+                    }
                 }
             }
             .endTimestamp()

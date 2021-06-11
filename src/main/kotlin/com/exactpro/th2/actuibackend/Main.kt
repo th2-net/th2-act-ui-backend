@@ -27,6 +27,7 @@ import com.exactpro.th2.actuibackend.services.grpc.GrpcService
 import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
 import com.exactpro.th2.common.event.Event
 import com.exactpro.th2.common.event.IBodyData
+import com.exactpro.th2.common.grpc.EventID
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -58,6 +59,9 @@ class Main(args: Array<String>) {
     private val messageValidator = MessageValidator(configuration, schemaParser)
     private val protoSchemaCache = ProtoSchemaCache(context, schemaParser)
     private val actGrpcService = GrpcService(context, protoSchemaCache, schemaParser, rabbitMqService.parentEventId)
+
+    private val actName = "act-ui sendMessage"
+    private val description = "act-ui subroot event"
 
     @InternalAPI
     private suspend fun sendErrorCode(call: ApplicationCall, e: Exception, code: HttpStatusCode) {
@@ -164,17 +168,33 @@ class Main(args: Array<String>) {
                         val request = MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
                         messageValidator.validate(request)
 
-                        try {
+                        val subrootEvent = rabbitMqService.createAndStoreEvent(
+                            actName,
+                            rabbitMqService.parentEventId.id,
+                            description,
+                            Event.Status.PASSED,
+                            "act-ui",
+                            null
+                        )
+
+                        val event = try {
                             rabbitMqService.sendMessage(request, rabbitMqService.parentEventId)
-                            saveMessageRequestEvent(rabbitMqService, request, true, jacksonMapper)
+                            saveMessageRequestEvent(rabbitMqService, subrootEvent.id, request, true, jacksonMapper)
                         } catch (e: Exception) {
-                            saveMessageRequestEvent(rabbitMqService, request, false, jacksonMapper, e.toString())
+                            saveMessageRequestEvent(
+                                rabbitMqService,
+                                subrootEvent.id,
+                                request,
+                                false,
+                                jacksonMapper,
+                                e.toString()
+                            )
                         }
 
 
 
                         mapOf(
-                            "eventId" to rabbitMqService.parentEventId.id,
+                            "eventId" to event.id,
                             "session" to request.session,
                             "dictionary" to request.dictionary,
                             "messageType" to request.messageType
@@ -232,31 +252,34 @@ class Main(args: Array<String>) {
     }
 }
 
-fun saveMessageRequestEvent(rabbitMqService: RabbitMqService, request: MessageSendRequest, success: Boolean, jacksonMapper: ObjectMapper, errorData: String? = "") {
-    rabbitMqService.createAndStoreEvent(
+fun saveMessageRequestEvent(
+    rabbitMqService: RabbitMqService,
+    parentEventId: String,
+    request: MessageSendRequest,
+    success: Boolean,
+    jacksonMapper: ObjectMapper,
+    errorData: String? = ""
+): EventID {
+    return rabbitMqService.createAndStoreEvent(
         "act-ui message send request",
-        rabbitMqService.parentEventId.id,
+        parentEventId,
         "",
         if (success) Event.Status.PASSED else Event.Status.FAILED,
         "act-ui",
-        object : Iterable<Any>, IBodyData {
-            override fun iterator(): Iterator<Any> {
-                return listOf(
-                    object {
-                        val type = "message"
-                        val data = request.run { "session=$session dictionary=$dictionary messageType=$messageType" }
-                    },
-                    object {
-                        val type = "message"
-                        val data = jacksonMapper.writeValueAsString(request.message)
-                    },
-                    object {
-                        val type = "message"
-                        val data = errorData ?: "message sent successfully"
-                    }
-                ).iterator()
+        listOf(
+            object : IBodyData {
+                val type = "message"
+                val data = request.run { "session=$session dictionary=$dictionary messageType=$messageType" }
+            },
+            object : IBodyData {
+                val type = "message"
+                val data = jacksonMapper.writeValueAsString(request.message)
+            },
+            object : IBodyData {
+                val type = "message"
+                val data = errorData ?: "message sent successfully"
             }
-        }
+        )
     )
 }
 
