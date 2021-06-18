@@ -23,6 +23,7 @@ import com.exactpro.th2.actuibackend.entities.requests.MethodCallRequest
 import com.exactpro.th2.actuibackend.message.MessageValidator
 import com.exactpro.th2.actuibackend.protobuf.ProtoSchemaCache
 import com.exactpro.th2.actuibackend.schema.SchemaParser
+import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
 import com.exactpro.th2.actuibackend.services.grpc.GrpcService
 import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
 import com.exactpro.th2.common.event.Event
@@ -54,10 +55,11 @@ class Main(args: Array<String>) {
     private val jacksonMapper = context.jacksonMapper
     private val timeout = context.timeout
     private val cacheControl = context.cacheControl
+    private val serviceProtoLoader = ServiceProtoLoader(configuration, jacksonMapper)
     private val schemaParser = SchemaParser(configuration, jacksonMapper)
     private val rabbitMqService = RabbitMqService(configuration)
     private val messageValidator = MessageValidator(configuration, schemaParser)
-    private val protoSchemaCache = ProtoSchemaCache(context, schemaParser)
+    private val protoSchemaCache = ProtoSchemaCache(context, serviceProtoLoader, schemaParser)
     private val actGrpcService = GrpcService(context, protoSchemaCache, schemaParser, rabbitMqService.parentEventId)
 
     private val actName = "act-ui sendMessage"

@@ -21,6 +21,7 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.schema.SchemaParser
+import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
 import kotlinx.coroutines.runBlocking
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
@@ -29,7 +30,11 @@ import org.ehcache.config.builders.ExpiryPolicyBuilder
 import org.ehcache.config.builders.ResourcePoolsBuilder
 import java.time.Duration
 
-class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaParser) {
+class ProtoSchemaCache(
+    private val context: Context,
+    private val serviceProtoLoader: ServiceProtoLoader,
+    private val schemaParser: SchemaParser
+) {
 
     private val protobufParser = ProtobufParser(context)
 
@@ -42,7 +47,7 @@ class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaPar
             ResourcePoolsBuilder.heap(context.configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
+                    .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
         ).build()
     )
 
@@ -54,7 +59,7 @@ class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaPar
         return if (actNameToSchemaPackage.containsKey(actName)) {
             actNameToSchemaPackage.get(actName)
         } else {
-            context.jsonService[actName]?.let {
+            serviceProtoLoader.getServiceProto(actName)?.let {
                 protobufParser.parseBase64ToJsonTree(it)
             }?.let {
                 protobufParser.parseJsonToProtoSchemas(actName, it)
@@ -71,8 +76,8 @@ class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaPar
 
     suspend fun getServices(): List<FullServiceName> {
         return schemaParser.getActs()
-            .mapNotNull { act -> getDependentSchemaByActName(act) }
-            .flatMap { it.getServices() }
+                .mapNotNull { act -> getDependentSchemaByActName(act) }
+                .flatMap { it.getServices() }
     }
 
 

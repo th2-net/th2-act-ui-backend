@@ -20,6 +20,7 @@ import com.exactpro.th2.common.grpc.MessageBatch
 import com.exactpro.th2.common.grpc.Value
 import com.exactpro.th2.common.schema.factory.CommonFactory
 import com.exactpro.th2.common.schema.message.MessageRouter
+import com.google.errorprone.annotations.Var
 
 
 class CustomConfigurationClass {
@@ -37,9 +38,12 @@ class CustomConfigurationClass {
     val protoCacheSize = 100
     val getSchemaRetryCount = 10
     val getSchemaRetryDelay = 1
+    val schemaProtoLink: String = ""
+    val schemaProtoCacheExpiry = 60
+    val serviceType: String = "Th2Box"
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay)"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaProtoLink='$schemaProtoLink', schemaProtoCacheExpiry=$schemaProtoCacheExpiry, serviceType='$serviceType')"
     }
 }
 
@@ -74,6 +78,10 @@ class Configuration(args: Array<String>) {
         "schemaXMLLink", customConfiguration.schemaXMLLink, ""
     )
 
+    val schemaProtoLink: Variable = Variable(
+        "schemaProtoLink", customConfiguration.schemaProtoLink, ""
+    )
+
     val protoCompileDirectory: Variable = Variable(
         "protoCompileDirectory", customConfiguration.protoCompileDirectory, "src/main/resources/protobuf"
     )
@@ -84,12 +92,15 @@ class Configuration(args: Array<String>) {
         Variable(
             "actTypes",
             it.toString(),
-            setOf("th2-act").toString()
+            setOf("th2-act", "th2-sim").toString()
         )
     }
 
     val schemaCacheExpiry: Variable =
         Variable("schemaCacheExpiry", customConfiguration.schemaCacheExpiry.toString(), "86400")
+
+    val schemaProtoCacheExpiry: Variable =
+        Variable("schemaProtoCacheExpiry", customConfiguration.schemaProtoCacheExpiry.toString(), "60")
 
     val protoCacheExpiry: Variable =
         Variable("protoCacheExpiry", customConfiguration.protoCacheExpiry.toString(), "3600")
@@ -99,6 +110,8 @@ class Configuration(args: Array<String>) {
     val getSchemaRetryCount: Variable = Variable("getSchemaRetryCount", customConfiguration.getSchemaRetryCount.toString(), "10")
 
     val getSchemaRetryDelay: Variable = Variable("getSchemaRetryDelay", customConfiguration.getSchemaRetryDelay.toString(), "1")
+
+    val serviceType: Variable = Variable("serviceType", customConfiguration.serviceType, "Th2Box")
 }
 
 

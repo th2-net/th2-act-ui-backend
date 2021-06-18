@@ -64,7 +64,7 @@ class ProtobufParser(private val context: Context) {
         val defaultPaths = listOf("src/main/resources", "src/test/resources", "/home")
         for (path in defaultPaths) {
             for (file in File(path).walk()) {
-                if (file.name == name) return file.path
+                if (file.name.contains(name)) return file.path
             }
         }
         logger.error { "Cannot find plugin '$name' from paths: $defaultPaths" }
