@@ -75,36 +75,37 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
 
     private val TH2_ACT = configuration.actTypes
 
+
     @KtorExperimentalAPI
     private suspend fun getSchemaXml(): ByteArray {
         return withContext(Dispatchers.IO) {
-            val httpClient = HttpClient()
+            val httpClient = getHttpClient()
             var retries = 0
-            var byteArray: ByteArray? = null
+            var response: ResponseObject<ByteArray>
             do {
                 var needRetry = false
-                try {
-                    val response = httpClient.request<HttpResponse> {
-                        url(configuration.schemaXMLLink.value)
-                        method = HttpMethod.Get
+                response = try {
+                    ResponseObject(
+                        data = httpClient.request<HttpResponse> {
+                            url(configuration.schemaXMLLink.value)
+                            method = HttpMethod.Get
+                        }.content.toByteArray()
+                    )
+                } catch (exception: Exception) {
+                    logger.error(exception.cause) {
+                        "Can not get schema. Retry: $retries. " +
+                                "Error message: ${exception.message}."
                     }
-                    logger.debug("get schema response status: ${response.status}")
-                    if (response.status != HttpStatusCode.OK) {
-                        logger.error { "Bad response. Status: '${response.status.value}' description: ${response.status.description}" }
-                        needRetry = true
-                    } else {
-                        byteArray = response.content.toByteArray()
-                    }
-                } catch (cause: Throwable) {
-                    logger.error(cause) { "Can not get schema. Retry: $retries" }
                     needRetry = true
+                    ResponseObject(null, exception)
                 }
                 if (needRetry) delay(getSchemaRetryDelay)
             } while (needRetry && retries++ < getSchemaRetryCount)
 
-            byteArray ?: throw Exception("Can not get schema")
+            response.getValueOrThrow()
         }
     }
+
 
     private suspend fun getJsonTree(): JsonNode {
         return withContext(Dispatchers.IO) {

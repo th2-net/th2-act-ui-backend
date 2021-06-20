@@ -51,19 +51,15 @@ class ProtoSchemaCache(
         ).build()
     )
 
-    init {
-        runBlocking { getServices() }
-    }
-
-    private suspend fun getDependentSchemaByActName(actName: String): DependentSchemas? {
+    private suspend fun getDependentSchemaByActName(actName: String): DependentSchemas {
         return if (actNameToSchemaPackage.containsKey(actName)) {
             actNameToSchemaPackage.get(actName)
         } else {
-            serviceProtoLoader.getServiceProto(actName)?.let {
+            serviceProtoLoader.getServiceProto(actName).let {
                 protobufParser.parseBase64ToJsonTree(it)
-            }?.let {
+            }.let {
                 protobufParser.parseJsonToProtoSchemas(actName, it)
-            }?.let {
+            }.let {
                 actNameToSchemaPackage.put(actName, it)
                 it
             }
@@ -71,15 +67,14 @@ class ProtoSchemaCache(
     }
 
     private suspend fun getPackageByActName(actName: String): DependentSchemas {
-        return getDependentSchemaByActName(actName) ?: throw InvalidRequestException("Act: '$actName' not found")
+        return getDependentSchemaByActName(actName)
     }
 
     suspend fun getServices(): List<FullServiceName> {
         return schemaParser.getActs()
-                .mapNotNull { act -> getDependentSchemaByActName(act) }
+                .map { act -> getDependentSchemaByActName(act) }
                 .flatMap { it.getServices() }
     }
-
 
     suspend fun getServicesInAct(actName: String): List<FullServiceName> {
         return getPackageByActName(actName).getServices()

@@ -18,7 +18,7 @@ package com.exactpro.th2.actuibackend.schema
 
 import Configuration
 import com.fasterxml.jackson.databind.ObjectMapper
-import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -58,60 +58,53 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
 
     private fun createUrl(serviceName: String): String {
         return String.format(
-            "%s/%s/%s/%s",
+            "%s/%s/%s",
             configuration.schemaProtoLink.value,
-            configuration.namespace.value,
             configuration.serviceType.value,
             serviceName
         )
     }
 
+
+
     @KtorExperimentalAPI
-    private suspend fun loadServiceProtoBase64(serviceName: String): ByteArray {
+    private suspend fun loadServiceProtoBase64(serviceName: String): String {
         return withContext(Dispatchers.IO) {
-            val httpClient = HttpClient()
+            val httpClient = getHttpClient()
             var retries = 0
-            var byteArray: ByteArray? = null
+            var response: ResponseObject<String>
             do {
                 var needRetry = false
-                try {
-                    val response = httpClient.request<HttpResponse> {
-                        url(createUrl(serviceName))
-                        method = HttpMethod.Get
+                response = try {
+                    ResponseObject(
+                        data = httpClient.request<HttpResponse> {
+                            url(createUrl(serviceName))
+                            method = HttpMethod.Get
+                        }.receive()
+                    )
+                } catch (exception: Exception) {
+                    logger.error(exception.cause) {
+                        "Can not get service proto.  Retry: $retries. " +
+                                "Error message: ${exception.message}."
                     }
-                    logger.debug("get service proto response status: ${response.status}")
-                    if (response.status != HttpStatusCode.OK) {
-                        logger.error { "Bad response. Status: '${response.status.value}' description: ${response.status.description}" }
-                        needRetry = true
-                    } else {
-                        byteArray = response.content.toByteArray()
-                    }
-                } catch (cause: Throwable) {
-                    logger.error(cause) { "Can not get service proto. Retry: $retries" }
                     needRetry = true
+                    ResponseObject(null, exception)
                 }
                 if (needRetry) delay(getSchemaRetryDelay)
             } while (needRetry && retries++ < getSchemaRetryCount)
 
-            byteArray ?: throw Exception("Can not get service proto")
+            response.getValueOrThrow()
         }
     }
 
-
-    suspend fun getServiceProto(serviceName: String): String? {
+    suspend fun getServiceProto(serviceName: String): String {
         return withContext(Dispatchers.IO) {
             if (serviceProtoCache.containsKey(serviceName)) {
                 serviceProtoCache.get(serviceName)
             } else {
-                try {
-
-                    objectMapper.readTree(loadServiceProtoBase64(serviceName)).let {
-                        serviceProtoCache.put(serviceName, it.toString())
-                        it.toString()
-                    }
-                } catch (e: Exception) {
-                    println(e)
-                    null
+                objectMapper.readTree(loadServiceProtoBase64(serviceName)).let {
+                    serviceProtoCache.put(serviceName, it.toString())
+                    it.toString()
                 }
             }
         }

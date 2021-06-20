@@ -96,7 +96,7 @@ class Main(args: Array<String>) {
                             }
                         }.join()
                     } catch (e: Exception) {
-                        throw e.rootCause ?: e
+                        throw e.cause ?: e
                     }
                 } catch (e: NoSuchElementException) {
                     logger.error(e) { "unable to handle request '$requestName' with parameters '$stringParameters' - not found" }
