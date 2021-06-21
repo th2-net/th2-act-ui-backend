@@ -88,7 +88,7 @@ class Configuration(args: Array<String>) {
         Variable(
             "actTypes",
             it.toString(),
-            setOf("th2-act", "th2-sim").toString()
+            setOf("th2-act").toString()
         )
     }
 
