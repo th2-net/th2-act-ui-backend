@@ -97,7 +97,7 @@ Message send request:
 
 ```
 
-`http://localhost:8080/method` - call gRPC method with specified message. returns a response message 
+`http://localhost:8080/method` - call gRPC method with specified message. returns a response message. 
 
 - `fullServiceName` - text, name of service whose method we call  **Required**. Example: `act:Act`
 - `methodName` - text, name of calling method  **Required**. Example: `sendMessage`
@@ -358,29 +358,30 @@ schema component description example (act-ui-backend.yml):
 apiVersion: th2.exactpro.com/v1
 kind: Th2CoreBox
 metadata:
-  name: rpt-data-provider
+  name: act-ui-backend
 spec:
-  image-name: ghcr.io/th2-net/th2-rpt-data-provider
-  image-version: 2.2.5 // change this line if you want to use a newer version
+  image-name: ghcr.io/th2-net/th2-act-ui-backend
+  image-version: 0.3.0 // change this line if you want to use a newer version
   type: th2-rpt-data-provider
   custom-config:
     hostname: "localhost"
     port: 8080
     responseTimeout: 6000 // maximum request processing time in milliseconds
 
-    serverCacheTimeout: 60000 // cached event lifetime in milliseconds
     clientCacheTimeout: 60 // cached event lifetime in milliseconds
-
     ioDispatcherThreadPoolSize: 10 // thread pool size for blocking database calls
-    codecResponseTimeout: 6000 // if a codec doesn't respond in time, requested message is returned with a 'null' body
-    codecCacheSize: 100 // size of the internal cache for parsed messages
-    checkRequestsAliveDelay: 2000 // response channel check interval in milliseconds
-    
-    schemaXMLLink: "http://th2-qa:30000/editor/backend/schema/qa-test-script" // link to the desired schema
+        
+    schemaXMLLink: "" // link to the desired schema
     protoCompileDirectory: "src/main/resources/protobuf" // directory for compiling proto files
     namespace: "th2-qa" // namespace for sending grpc messages
     actTypes: ["th2-act"] // the types of services the *acts* method will look for
-    
+    schemaCacheExpiry: 24 * 60 * 60 // schemaXML cache clearing frequency
+
+    protoCacheExpiry: 60 * 60 // compiled proto schema cache clearing frequency
+    protoCacheSize: 100 // compiled proto schema cache size
+    getSchemaRetryCount: 10 // number of retries when requesting an xml schema
+    getSchemaRetryDelay: 1 // delay between attempts to load xml schema
+    schemaProtoLink: "" // link to the api to get the base64 proto schema for the service
   pins: // pins are used to communicate with codec components to parse message data
     - name: to_codec
       connection-type: mq
@@ -395,20 +396,23 @@ spec:
         - parsed
         - subscribe
   extended-settings:
-    chart-cfg:
-      ref: schema-stable
-      path: custom-component
     service:
       enabled: false
-      nodePort: '31275'
+      type: NodePort
+      endpoints:
+        - name: 'grpc'
+          targetPort: 8080
+          nodePort: 31467
+
     envVariables:
-      JAVA_TOOL_OPTIONS: "-XX:+ExitOnOutOfMemoryError -Ddatastax-java-driver.advanced.connection.init-query-timeout=\"5000 milliseconds\""
+      JAVA_TOOL_OPTIONS: '-XX:+UseContainerSupport -XX:MaxRAMPercentage=90'
+
     resources:
       limits:
-        memory: 2000Mi
-        cpu: 600m
+        memory: 700Mi
+        cpu: 310m
       requests:
-        memory: 300Mi
+        memory: 500Mi
         cpu: 50m
 
 ```

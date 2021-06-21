@@ -27,12 +27,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import org.ehcache.Cache
-import org.ehcache.config.builders.CacheConfigurationBuilder
-import org.ehcache.config.builders.CacheManagerBuilder
-import org.ehcache.config.builders.ExpiryPolicyBuilder
-import org.ehcache.config.builders.ResourcePoolsBuilder
-import java.time.Duration
 
 class ServiceProtoLoader(val configuration: Configuration, val objectMapper: ObjectMapper) {
 
@@ -43,45 +37,32 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     private val getSchemaRetryCount = configuration.getSchemaRetryCount.value.toLong()
     private val getSchemaRetryDelay = configuration.getSchemaRetryDelay.value.toLong()
 
-    private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
-    private val serviceProtoCache: Cache<String, String> = manager.createCache(
-        "schemaProto",
-        CacheConfigurationBuilder.newCacheConfigurationBuilder(
-            String::class.java,
-            String::class.java,
-            ResourcePoolsBuilder.heap(1)
-        ).withExpiry(
-            ExpiryPolicyBuilder
-                    .timeToLiveExpiration(Duration.ofSeconds(configuration.schemaProtoCacheExpiry.value.toLong()))
-        ).build()
-    )
+    private val serviceType = "Th2Box"
+
+    private data class DescriptorData(val descriptor: String, val content: String)
 
     private fun createUrl(serviceName: String): String {
         return String.format(
             "%s/%s/%s",
             configuration.schemaProtoLink.value,
-            configuration.serviceType.value,
+            serviceType,
             serviceName
         )
     }
 
-
-
     @KtorExperimentalAPI
-    private suspend fun loadServiceProtoBase64(serviceName: String): String {
+    private suspend fun loadServiceProtoBase64(serviceName: String): DescriptorData {
         return withContext(Dispatchers.IO) {
             val httpClient = getHttpClient()
             var retries = 0
-            var response: ResponseObject<String>
+            var responseData: ResponseObject<DescriptorData>
             do {
                 var needRetry = false
-                response = try {
-                    ResponseObject(
-                        data = httpClient.request<HttpResponse> {
-                            url(createUrl(serviceName))
-                            method = HttpMethod.Get
-                        }.receive()
-                    )
+                responseData = try {
+                    httpClient.request<HttpResponse> {
+                        url(createUrl(serviceName))
+                        method = HttpMethod.Get
+                    }.let { ResponseObject(data = it.receive()) }
                 } catch (exception: Exception) {
                     logger.error(exception.cause) {
                         "Can not get service proto.  Retry: $retries. " +
@@ -93,20 +74,14 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
                 if (needRetry) delay(getSchemaRetryDelay)
             } while (needRetry && retries++ < getSchemaRetryCount)
 
-            response.getValueOrThrow()
+            responseData.getValueOrThrow()
         }
     }
 
+    @KtorExperimentalAPI
     suspend fun getServiceProto(serviceName: String): String {
         return withContext(Dispatchers.IO) {
-            if (serviceProtoCache.containsKey(serviceName)) {
-                serviceProtoCache.get(serviceName)
-            } else {
-                objectMapper.readTree(loadServiceProtoBase64(serviceName)).let {
-                    serviceProtoCache.put(serviceName, it.toString())
-                    it.toString()
-                }
-            }
+            loadServiceProtoBase64(serviceName).content
         }
     }
 }
