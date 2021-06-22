@@ -33,7 +33,7 @@ suspend fun getHttpClient(): HttpClient {
                 val statusCode = response.status.value
 
                 when (statusCode) {
-                    HttpStatusCode.NoContent.value -> throw InfraSchemaDataException("Schema incorrect data. Status: $statusCode.")
+                    HttpStatusCode.NoContent.value -> throw InfraSchemaDataException("Schema incorrect data. Status: $statusCode. Request: ${response.request.url}")
                     in 300..399 -> throw RedirectResponseException(response, response.content.readUTF8Line() ?: "")
                     in 400..499 -> throw ClientRequestException(response, response.content.readUTF8Line() ?: "")
                     in 500..599 -> throw ServerResponseException(response, response.content.readUTF8Line() ?: "")
