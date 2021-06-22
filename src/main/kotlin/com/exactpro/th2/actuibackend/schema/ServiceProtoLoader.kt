@@ -20,6 +20,7 @@ import Configuration
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.common.reflect.TypeToken
 import io.ktor.client.call.*
+import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -79,6 +80,9 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
                 httpClient.request<HttpResponse> {
                     url(createUrl(serviceName))
                     method = HttpMethod.Get
+                    timeout {
+                        requestTimeoutMillis = 10000
+                    }
                 }.let { ResponseObject(data = it.receive()) }
             } catch (exception: Exception) {
                 logger.error(exception.cause) {
