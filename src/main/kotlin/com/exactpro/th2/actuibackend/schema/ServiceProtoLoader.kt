@@ -39,8 +39,6 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
 
     private val serviceType = "Th2Box"
 
-    private data class DescriptorData(val descriptor: String, val content: String)
-
     private fun createUrl(serviceName: String): String {
         return String.format(
             "%s/%s/%s",
@@ -51,11 +49,11 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     }
 
     @KtorExperimentalAPI
-    private suspend fun loadServiceProtoBase64(serviceName: String): DescriptorData {
+    private suspend fun loadServiceProtoBase64(serviceName: String): String {
         return withContext(Dispatchers.IO) {
             val httpClient = getHttpClient()
             var retries = 0
-            var responseData: ResponseObject<DescriptorData>
+            var responseData: ResponseObject<String>
             do {
                 var needRetry = false
                 responseData = try {
@@ -81,7 +79,9 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     @KtorExperimentalAPI
     suspend fun getServiceProto(serviceName: String): String {
         return withContext(Dispatchers.IO) {
-            loadServiceProtoBase64(serviceName).content
+            objectMapper.readTree(loadServiceProtoBase64(serviceName)).let {
+                it.get("content").textValue()
+            }
         }
     }
 }
