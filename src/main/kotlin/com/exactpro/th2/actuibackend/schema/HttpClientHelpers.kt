@@ -27,7 +27,7 @@ import io.ktor.utils.io.*
 suspend fun getHttpClient(): HttpClient {
     return HttpClient {
         expectSuccess = false
-
+        install(HttpTimeout)
         HttpResponseValidator {
             validateResponse { response: HttpResponse ->
                 val statusCode = response.status.value
