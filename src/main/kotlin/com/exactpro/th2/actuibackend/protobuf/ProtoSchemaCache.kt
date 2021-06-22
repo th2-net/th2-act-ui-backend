@@ -72,6 +72,7 @@ class ProtoSchemaCache(
 
     suspend fun getServices(): List<FullServiceName> {
         return schemaParser.getActs()
+                .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
                 .map { act -> getDependentSchemaByActName(act) }
                 .flatMap { it.getServices() }
     }

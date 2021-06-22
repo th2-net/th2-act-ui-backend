@@ -47,7 +47,7 @@ suspend fun getHttpClient(): HttpClient {
     }
 }
 
-data class ResponseObject<T>(val data: T? = null, val exception: Exception? = null) {
+open class ResponseObject<T>(open val data: T? = null, open val exception: Exception? = null) {
     fun getValueOrThrow(): T {
         return data ?: throw exception!!
     }

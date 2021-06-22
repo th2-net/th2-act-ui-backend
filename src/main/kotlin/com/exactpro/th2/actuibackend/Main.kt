@@ -159,6 +159,7 @@ class Main(args: Array<String>) {
                 get("/acts") {
                     handleRequest(call, "acts", cacheControl) {
                         schemaParser.getActs()
+                            .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
                     }
                 }
 

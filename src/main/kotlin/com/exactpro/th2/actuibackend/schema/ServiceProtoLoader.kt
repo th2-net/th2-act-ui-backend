@@ -18,6 +18,7 @@ package com.exactpro.th2.actuibackend.schema
 
 import Configuration
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.common.reflect.TypeToken
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -27,12 +28,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
+import org.ehcache.Cache
+import org.ehcache.config.builders.CacheConfigurationBuilder
+import org.ehcache.config.builders.CacheManagerBuilder
+import org.ehcache.config.builders.ExpiryPolicyBuilder
+import org.ehcache.config.builders.ResourcePoolsBuilder
+import java.time.Duration
 
 class ServiceProtoLoader(val configuration: Configuration, val objectMapper: ObjectMapper) {
 
     companion object {
         private val logger = KotlinLogging.logger { }
     }
+
+    private data class ResponseInfo(
+        override val data: String? = null,
+        override val exception: java.lang.Exception? = null
+    ) : ResponseObject<String>(data, exception)
+
+    private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
+    private val serviceDescriptorCache: Cache<String, ResponseInfo> = manager.createCache(
+        "descriptors",
+        CacheConfigurationBuilder.newCacheConfigurationBuilder(
+            String::class.java,
+            ResponseInfo::class.java,
+            ResourcePoolsBuilder.heap(configuration.protoCacheSize.value.toLong())
+        ).withExpiry(
+            ExpiryPolicyBuilder
+                .timeToLiveExpiration(Duration.ofSeconds(configuration.protoCacheExpiry.value.toLong() - 60 * 5))
+        )
+            .build()
+    )
 
     private val getSchemaRetryCount = configuration.getSchemaRetryCount.value.toLong()
     private val getSchemaRetryDelay = configuration.getSchemaRetryDelay.value.toLong()
@@ -52,25 +78,18 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     private suspend fun loadServiceProtoBase64(serviceName: String): String {
         return withContext(Dispatchers.IO) {
             val httpClient = getHttpClient()
-            var retries = 0
-            var responseData: ResponseObject<String>
-            do {
-                var needRetry = false
-                responseData = try {
-                    httpClient.request<HttpResponse> {
-                        url(createUrl(serviceName))
-                        method = HttpMethod.Get
-                    }.let { ResponseObject(data = it.receive()) }
-                } catch (exception: Exception) {
-                    logger.error(exception.cause) {
-                        "Can not get service proto.  Retry: $retries. " +
-                                "Error message: ${exception.message}."
-                    }
-                    needRetry = true
-                    ResponseObject(null, exception)
+            val responseData: ResponseObject<String> = try {
+                httpClient.request<HttpResponse> {
+                    url(createUrl(serviceName))
+                    method = HttpMethod.Get
+                }.let { ResponseObject(data = it.receive()) }
+            } catch (exception: Exception) {
+                logger.error(exception.cause) {
+                    "Can not get service proto. " +
+                            "Error message: ${exception.message}."
                 }
-                if (needRetry) delay(getSchemaRetryDelay)
-            } while (needRetry && retries++ < getSchemaRetryCount)
+                ResponseObject(null, exception)
+            }
 
             responseData.getValueOrThrow()
         }
@@ -79,9 +98,29 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     @KtorExperimentalAPI
     suspend fun getServiceProto(serviceName: String): String {
         return withContext(Dispatchers.IO) {
-            objectMapper.readTree(loadServiceProtoBase64(serviceName)).let {
-                it.get("content").textValue()
+            if (serviceDescriptorCache.containsKey(serviceName)) {
+                serviceDescriptorCache.get(serviceName).getValueOrThrow()
+            } else {
+                try {
+                    objectMapper.readTree(loadServiceProtoBase64(serviceName)).let { jsonTree ->
+                        jsonTree.get("content").textValue().also {
+                            serviceDescriptorCache.put(serviceName, ResponseInfo(it))
+                        }
+                    }
+                } catch (e: Exception) {
+                    serviceDescriptorCache.put(serviceName, ResponseInfo(exception = e))
+                    throw e
+                }
             }
+        }
+    }
+
+    suspend fun isServiceHasDescriptor(serviceName: String): Boolean {
+        return try {
+            getServiceProto(serviceName)
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 }
