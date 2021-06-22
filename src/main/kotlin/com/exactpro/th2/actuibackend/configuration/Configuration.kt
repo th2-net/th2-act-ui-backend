@@ -37,9 +37,10 @@ class CustomConfigurationClass {
     val getSchemaRetryCount = 10
     val getSchemaRetryDelay = 1
     val schemaProtoLink: String = ""
+    val schemaProtoCacheExpiry = 10
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaProtoLink='$schemaProtoLink')"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaProtoLink='$schemaProtoLink', schemaProtoCacheExpiry=$schemaProtoCacheExpiry)"
     }
 }
 
@@ -104,6 +105,8 @@ class Configuration(args: Array<String>) {
     val getSchemaRetryCount: Variable = Variable("getSchemaRetryCount", customConfiguration.getSchemaRetryCount.toString(), "10")
 
     val getSchemaRetryDelay: Variable = Variable("getSchemaRetryDelay", customConfiguration.getSchemaRetryDelay.toString(), "1")
+
+    val schemaProtoCacheExpiry: Variable = Variable("schemaProtoCacheExpiry", customConfiguration.schemaProtoCacheExpiry.toString(), "10")
 
 }
 

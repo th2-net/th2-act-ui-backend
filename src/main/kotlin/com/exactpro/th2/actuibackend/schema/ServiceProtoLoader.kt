@@ -55,13 +55,10 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
             ResourcePoolsBuilder.heap(configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                .timeToLiveExpiration(Duration.ofSeconds(configuration.protoCacheExpiry.value.toLong() - 60 * 5))
+                .timeToLiveExpiration(Duration.ofSeconds(configuration.schemaProtoCacheExpiry.value.toLong()))
         )
             .build()
     )
-
-    private val getSchemaRetryCount = configuration.getSchemaRetryCount.value.toLong()
-    private val getSchemaRetryDelay = configuration.getSchemaRetryDelay.value.toLong()
 
     private val serviceType = "Th2Box"
 
@@ -98,26 +95,26 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     @KtorExperimentalAPI
     suspend fun getServiceProto(serviceName: String): String {
         return withContext(Dispatchers.IO) {
-            if (serviceDescriptorCache.containsKey(serviceName)) {
-                serviceDescriptorCache.get(serviceName).getValueOrThrow()
-            } else {
-                try {
-                    objectMapper.readTree(loadServiceProtoBase64(serviceName)).let { jsonTree ->
-                        jsonTree.get("content").textValue().also {
-                            serviceDescriptorCache.put(serviceName, ResponseInfo(it))
-                        }
+            try {
+                objectMapper.readTree(loadServiceProtoBase64(serviceName)).let { jsonTree ->
+                    jsonTree.get("content").textValue().also {
+                        serviceDescriptorCache.put(serviceName, ResponseInfo(it))
                     }
-                } catch (e: Exception) {
-                    serviceDescriptorCache.put(serviceName, ResponseInfo(exception = e))
-                    throw e
                 }
+            } catch (e: Exception) {
+                serviceDescriptorCache.put(serviceName, ResponseInfo(exception = e))
+                throw e
             }
         }
     }
 
     suspend fun isServiceHasDescriptor(serviceName: String): Boolean {
         return try {
-            getServiceProto(serviceName)
+            if (serviceDescriptorCache.containsKey(serviceName)) {
+                serviceDescriptorCache.get(serviceName).getValueOrThrow()
+            } else {
+                getServiceProto(serviceName)
+            }
             true
         } catch (e: Exception) {
             false
