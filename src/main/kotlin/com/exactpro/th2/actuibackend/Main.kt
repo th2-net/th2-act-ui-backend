@@ -24,6 +24,7 @@ import com.exactpro.th2.actuibackend.message.MessageValidator
 import com.exactpro.th2.actuibackend.protobuf.ProtoSchemaCache
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
+import com.exactpro.th2.actuibackend.services.MessageSendService
 import com.exactpro.th2.actuibackend.services.grpc.GrpcService
 import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
 import com.exactpro.th2.common.event.Event
@@ -57,13 +58,12 @@ class Main(args: Array<String>) {
     private val cacheControl = context.cacheControl
     private val serviceProtoLoader = ServiceProtoLoader(configuration, jacksonMapper)
     private val schemaParser = SchemaParser(configuration, jacksonMapper)
-    private val rabbitMqService = RabbitMqService(configuration)
+    private val rabbitMqService = RabbitMqService(context)
     private val messageValidator = MessageValidator(configuration, schemaParser)
     private val protoSchemaCache = ProtoSchemaCache(context, serviceProtoLoader, schemaParser)
-    private val actGrpcService = GrpcService(context, protoSchemaCache, schemaParser, rabbitMqService.parentEventId)
+    private val actGrpcService = GrpcService(context, protoSchemaCache, schemaParser)
+    private val messageService = MessageSendService(rabbitMqService, actGrpcService, jacksonMapper)
 
-    private val actName = "act-ui sendMessage"
-    private val description = "act-ui subroot event"
 
     @InternalAPI
     private suspend fun sendErrorCode(call: ApplicationCall, e: Exception, code: HttpStatusCode) {
@@ -96,7 +96,7 @@ class Main(args: Array<String>) {
                             }
                         }.join()
                     } catch (e: Exception) {
-                        throw e.cause ?: e
+                        throw e.rootCause ?: e
                     }
                 } catch (e: NoSuchElementException) {
                     logger.error(e) { "unable to handle request '$requestName' with parameters '$stringParameters' - not found" }
@@ -167,42 +167,9 @@ class Main(args: Array<String>) {
                     val queryParametersMap = call.request.queryParameters.toMap()
                     val rawMessage = call.receiveText()
                     handleRequest(call, "message", cacheControl, queryParametersMap) {
-
                         val request = MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
                         messageValidator.validate(request)
-
-                        val subrootEvent = rabbitMqService.createAndStoreEvent(
-                            actName,
-                            rabbitMqService.parentEventId.id,
-                            description,
-                            Event.Status.PASSED,
-                            "act-ui",
-                            null
-                        )
-
-                        val event = try {
-                            rabbitMqService.sendMessage(request, rabbitMqService.parentEventId)
-                            saveMessageRequestEvent(rabbitMqService, subrootEvent.id, request, true, jacksonMapper)
-                        } catch (e: Exception) {
-                            saveMessageRequestEvent(
-                                rabbitMqService,
-                                subrootEvent.id,
-                                request,
-                                false,
-                                jacksonMapper,
-                                e.toString()
-                            )
-                        }
-
-
-
-                        mapOf(
-                            "eventId" to event.id,
-                            "session" to request.session,
-                            "dictionary" to request.dictionary,
-                            "messageType" to request.messageType
-
-                        ).also {
+                        messageService.sendRabbitMessage(request, rabbitMqService.parentEventId).also {
                             call.response.cacheControl(CacheControl.NoCache(null))
                         }
                     }
@@ -234,7 +201,7 @@ class Main(args: Array<String>) {
                     val methodCallMessage = call.receiveText()
                     handleRequest(call, "method", cacheControl, queryParametersMap) {
                         val methodCallRequest = MethodCallRequest(queryParametersMap, methodCallMessage)
-                        actGrpcService.sendMessage(methodCallRequest).also {
+                        messageService.sendGrpcMessage(methodCallRequest, rabbitMqService.parentEventId).also {
                             call.response.cacheControl(CacheControl.NoCache(null))
                         }
                     }
@@ -253,37 +220,6 @@ class Main(args: Array<String>) {
 
         logger.info { "serving on: http://${configuration.hostname.value}:${configuration.port.value}" }
     }
-}
-
-fun saveMessageRequestEvent(
-    rabbitMqService: RabbitMqService,
-    parentEventId: String,
-    request: MessageSendRequest,
-    success: Boolean,
-    jacksonMapper: ObjectMapper,
-    errorData: String? = ""
-): EventID {
-    return rabbitMqService.createAndStoreEvent(
-        "act-ui message send request",
-        parentEventId,
-        "",
-        if (success) Event.Status.PASSED else Event.Status.FAILED,
-        "act-ui",
-        listOf(
-            object : IBodyData {
-                val type = "message"
-                val data = request.run { "session=$session dictionary=$dictionary messageType=$messageType" }
-            },
-            object : IBodyData {
-                val type = "message"
-                val data = jacksonMapper.writeValueAsString(request.message)
-            },
-            object : IBodyData {
-                val type = "message"
-                val data = errorData ?: "message sent successfully"
-            }
-        )
-    )
 }
 
 

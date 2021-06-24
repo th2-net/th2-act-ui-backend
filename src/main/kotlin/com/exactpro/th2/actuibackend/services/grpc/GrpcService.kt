@@ -43,8 +43,7 @@ import mu.KotlinLogging
 class GrpcService(
     private val context: Context,
     private val protoSchemaCache: ProtoSchemaCache,
-    private val schemaParser: SchemaParser,
-    private val parentEvent: EventID
+    private val schemaParser: SchemaParser
 ) {
 
     companion object {
@@ -54,13 +53,26 @@ class GrpcService(
     private val responseTimeout = context.configuration.responseTimeout.value.toLong()
     private val PARENT_EVENT_ID_FIELD = "parent_event_id"
     private val namespace = context.configuration.namespace.value
+    private val statusField = "status"
+    private val errorStatus = "ERROR"
+
     private val boxNameToPort = runBlocking {
         schemaParser.getActs().let {
             schemaParser.getServicePorts(it.toSet())
         }
     }
 
-    private fun setParentEvent(message: DynamicMessage, messageDescriptor: Descriptors.Descriptor): DynamicMessage {
+    private fun validateMessage(message: DynamicMessage, stringMessage: String) {
+        val statusField = message.allFields.entries.firstOrNull { it.key.name.toLowerCase().contains(statusField) }
+        if (statusField?.value?.toString()?.toLowerCase() == errorStatus)
+            throw SendProtoMessageException("Bad response from act. Message: $stringMessage")
+    }
+
+    private fun setParentEvent(
+        message: DynamicMessage,
+        messageDescriptor: Descriptors.Descriptor,
+        parentEvent: EventID
+    ): DynamicMessage {
         val parentEventFieldDescriptor = messageDescriptor.findFieldByName(PARENT_EVENT_ID_FIELD)
         return if (parentEventFieldDescriptor != null && !message.hasField(parentEventFieldDescriptor)
         ) {
@@ -76,7 +88,8 @@ class GrpcService(
             ?: throw SendProtoMessageException("Unable to determine box: '$boxName' port")
     }
 
-    suspend fun sendMessage(callRequest: MethodCallRequest): MethodCallResponse {
+
+    suspend fun sendMessage(callRequest: MethodCallRequest, parentEvent: EventID): MethodCallResponse {
         var channel: ManagedChannel? = null
         return try {
             channel = ManagedChannelBuilder.forAddress(
@@ -89,7 +102,7 @@ class GrpcService(
             )
             val dynamicMessage =
                 protoSchema.jsonToDynamicMessage(callRequest.message, originMethod.inputType).let {
-                    setParentEvent(it, originMethod.inputType)
+                    setParentEvent(it, originMethod.inputType, parentEvent)
                 }
             val methodDescriptor = generateMethodDescriptor(originMethod, callRequest.fullServiceName.serviceName)
 
@@ -116,10 +129,13 @@ class GrpcService(
         val responseChannel = Channel<MethodCallResponse>(0)
         ClientCalls.asyncUnaryCall(clientCall, requestMessage, object : StreamObserver<DynamicMessage> {
             override fun onNext(value: DynamicMessage?) {
+                value?.allFields?.entries?.firstOrNull { it.key.name.toLowerCase().contains("status") }
                 runBlocking {
                     responseChannel.send(
-                        MethodCallResponse(value?.let {
-                            protoMessageToJson(it)
+                        MethodCallResponse(value?.let { message ->
+                            protoMessageToJson(message).also {
+                                validateMessage(message, it)
+                            }
                         })
                     )
                 }
@@ -142,7 +158,7 @@ class GrpcService(
         })
         return try {
             withTimeout(responseTimeout) {
-                responseChannel.receive().also {  message ->
+                responseChannel.receive().also { message ->
                     message.exception?.let { throw it }
                 }
             }
