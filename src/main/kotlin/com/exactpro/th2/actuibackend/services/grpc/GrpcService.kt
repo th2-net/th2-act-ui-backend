@@ -24,6 +24,7 @@ import com.exactpro.th2.actuibackend.entities.responces.MethodCallResponse
 import com.exactpro.th2.actuibackend.protobuf.ProtoSchemaCache
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.common.grpc.EventID
+import com.exactpro.th2.common.message.message
 import com.google.protobuf.Descriptors
 import com.google.protobuf.DynamicMessage
 import io.grpc.CallOptions
@@ -64,8 +65,14 @@ class GrpcService(
 
     private fun validateMessage(message: DynamicMessage, stringMessage: String) {
         val statusField = message.allFields.entries.firstOrNull { it.key.name.toLowerCase().contains(statusField) }
-        if (statusField?.value?.toString()?.toLowerCase() == errorStatus)
+        if (statusField?.value?.toString()?.toUpperCase() == errorStatus)
             throw SendProtoMessageException("Bad response from act. Message: $stringMessage")
+
+        message.allFields.forEach {
+            if (it.value is DynamicMessage) {
+                validateMessage(it.value as DynamicMessage, stringMessage)
+            }
+        }
     }
 
     private fun setParentEvent(
@@ -132,11 +139,10 @@ class GrpcService(
                 value?.allFields?.entries?.firstOrNull { it.key.name.toLowerCase().contains("status") }
                 runBlocking {
                     responseChannel.send(
-                        MethodCallResponse(value?.let { message ->
-                            protoMessageToJson(message).also {
-                                validateMessage(message, it)
-                            }
-                        })
+                        MethodCallResponse(
+                            message = value?.let { message -> protoMessageToJson(message) },
+                            rawMessage = value
+                        )
                     )
                 }
             }
@@ -146,7 +152,7 @@ class GrpcService(
                     responseChannel.send(
                         MethodCallResponse(
                             null,
-                            SendProtoMessageException("Unable to send gRPC message: $requestMessage. ${t?.message ?: ""}")
+                            exception = SendProtoMessageException("Unable to send gRPC message: $requestMessage. ${t?.message ?: ""}")
                         )
                     )
                 }
@@ -160,6 +166,7 @@ class GrpcService(
             withTimeout(responseTimeout) {
                 responseChannel.receive().also { message ->
                     message.exception?.let { throw it }
+                    message.message?.let {validateMessage(message.rawMessage!!, it)}
                 }
             }
         } catch (e: TimeoutCancellationException) {

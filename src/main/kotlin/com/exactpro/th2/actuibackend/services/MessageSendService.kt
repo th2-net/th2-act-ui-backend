@@ -139,13 +139,12 @@ class MessageSendService(
                 responseInfo = grpcService.sendMessage(request, subrootEvent).message
                 methodCallRequestEvent(subrootEvent.id, request, true)
             } catch (e: Exception) {
-                responseInfo = e.toString()
+                responseInfo = e.message
                 methodCallRequestEvent(subrootEvent.id, request, false, e.toString())
             }
             mapOf(
                 "eventId" to event.id,
                 "methodName" to request.methodName,
-                "sss" to subrootEvent.toString(),
                 "fullServiceName" to request.fullServiceName.toString(),
                 "responseMessage" to responseInfo.toString()
             )
