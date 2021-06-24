@@ -18,6 +18,7 @@
 package com.exactpro.th2.actuibackend
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -27,5 +28,14 @@ suspend fun ObjectMapper.asStringSuspend(data: Any?): String {
     return withContext(Dispatchers.IO) {
         mapper.writeValueAsString(data)
     }
+}
+
+
+fun Exception.getCauseEscapeCoroutineException(): Throwable? {
+    var rootCause: Throwable? = this
+    while (rootCause?.cause != null && rootCause is CancellationException) {
+        rootCause = rootCause.cause
+    }
+    return rootCause
 }
 

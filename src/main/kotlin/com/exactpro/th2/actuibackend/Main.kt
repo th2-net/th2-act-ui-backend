@@ -68,9 +68,10 @@ class Main(args: Array<String>) {
     @InternalAPI
     private suspend fun sendErrorCode(call: ApplicationCall, e: Exception, code: HttpStatusCode) {
         withContext(NonCancellable) {
-            call.respondText(e.rootCause?.message ?: e.toString(), ContentType.Text.Plain, code)
+            call.respondText(e.message ?: e.rootCause?.message ?: e.toString(), ContentType.Text.Plain, code)
         }
     }
+
 
     @InternalAPI
     private suspend fun handleRequest(
@@ -96,7 +97,7 @@ class Main(args: Array<String>) {
                             }
                         }.join()
                     } catch (e: Exception) {
-                        throw e.rootCause ?: e
+                        throw e.getCauseEscapeCoroutineException() ?: e
                     }
                 } catch (e: NoSuchElementException) {
                     logger.error(e) { "unable to handle request '$requestName' with parameters '$stringParameters' - not found" }
