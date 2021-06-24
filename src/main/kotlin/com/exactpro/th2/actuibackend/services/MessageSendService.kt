@@ -116,7 +116,7 @@ class MessageSendService(
         return withContext(Dispatchers.IO) {
             val subrootEvent = sendSubrootEvent(actNameRabbit, parentEventId)
             val event = try {
-                rabbitMqService.sendMessage(request, parentEventId)
+                rabbitMqService.sendMessage(request, subrootEvent)
                 saveMessageRequestEvent(subrootEvent.id, request, true)
             } catch (e: Exception) {
                 saveMessageRequestEvent(subrootEvent.id, request, false, e.toString())
