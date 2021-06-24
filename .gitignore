@@ -42,5 +42,4 @@ buildinfo.htm
 BenchmarkList
 CompilerHints
 /configs
-/src/main/resources/protoc-gen-jsonschema
-
+/src/main/resources/protoc-gen-jsonschema*
