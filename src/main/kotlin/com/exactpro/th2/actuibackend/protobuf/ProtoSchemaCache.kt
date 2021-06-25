@@ -22,6 +22,7 @@ import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
+import com.fasterxml.jackson.databind.JsonNode
 import kotlinx.coroutines.runBlocking
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
@@ -47,7 +48,7 @@ class ProtoSchemaCache(
             ResourcePoolsBuilder.heap(context.configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                    .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
+                .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
         ).build()
     )
 
@@ -72,9 +73,9 @@ class ProtoSchemaCache(
 
     suspend fun getServices(): List<FullServiceName> {
         return schemaParser.getActs()
-                .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
-                .map { act -> getDependentSchemaByActName(act) }
-                .flatMap { it.getServices() }
+            .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
+            .map { act -> getDependentSchemaByActName(act) }
+            .flatMap { it.getServices() }
     }
 
     suspend fun getServicesInAct(actName: String): List<FullServiceName> {
@@ -85,14 +86,14 @@ class ProtoSchemaCache(
         return getSchemaByServiceName(name).getServiceInfo(name)
     }
 
-    suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, String> {
+    suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, JsonNode> {
         val schema = getPackageByActName(name.actName).getJsonSchemaByService(name)
         return if (methodName == null) {
-            schema
+            schema.entries.associate { it.key to context.jacksonMapper.readTree(it.value) }
         } else {
             val protoMethod = getServiceDescription(name).methods.firstOrNull { it.methodName == methodName }
                 ?: throw InvalidRequestException("Unknown method name: '$methodName'")
-            listOf(protoMethod.inputType, protoMethod.outputType).associateWith { schema[it]!! }
+            listOf(protoMethod.inputType, protoMethod.outputType).associateWith { context.jacksonMapper.readTree(schema[it]!!) }
         }
     }
 
