@@ -18,7 +18,6 @@ package com.exactpro.th2.actuibackend.schema
 
 import Configuration
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.common.reflect.TypeToken
 import io.ktor.client.call.*
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -26,7 +25,6 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.ehcache.Cache
@@ -56,7 +54,7 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
             ResourcePoolsBuilder.heap(configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                .timeToLiveExpiration(Duration.ofSeconds(configuration.schemaProtoCacheExpiry.value.toLong()))
+                .timeToLiveExpiration(Duration.ofSeconds(configuration.descriptorsCacheExpiry.value.toLong()))
         )
             .build()
     )

@@ -36,11 +36,16 @@
 - `dictionary` - text, name of dictionary for parsing the message  **Required**. Example: `fix50-test`
 - `messageType` - text, type of the sending message  **Required**. Example: `NewOrderSingle`
 
-Parent event id: 
+Response: 
 ```
 {
-  "parentEvent": "5814945e-5963-11eb-8810-4bd966db93a9"
+  "eventId": "5814945e-5963-11eb-8810-4bd966db93a9",
+  "session": "...",
+  "dictionary": "...",
+  "messageType": "..."
 }
+
+session, dictionary, messageType - same as request.
 ```
 
 Message send request: 
@@ -104,19 +109,18 @@ Message send request:
 
 If the message contains the field `parentEventId` then it will be attached to it otherwise the message will be attached to the generated event. 
 
-Response message:
+Response:
 ```
 {
-"message": "{\n  \"status\": {\n    \"status\": \"SUCCESS\",\n    \"message\": \"\"\n  },\n  \"checkpointId\": {\n    \"id\": \"e365e960-7163-11eb-ae4a-85aa72af0f35\",\n    \"sessionAliasToDirectionCheckpoint\": {\n    }\n  }\n}"
+    "eventId": "5814945e-5963-11eb-8810-4bd966db93a9",
+    "methodName": "...",
+    "fullServiceName": "...",
+    "responseMessage": "{\n  \"status\": {\n    \"status\": \"SUCCESS\",\n    \"message\": \"\"\n  },\n  \"checkpointId\": {\n    \"id\": \"e365e960-7163-11eb-ae4a-85aa72af0f35\",\n    \"sessionAliasToDirectionCheckpoint\": {\n    }\n  }"
+
+    methodName, fullServiceName - same as request.
 }
 ```
 
-Response message with error:
-```
-{
-"message": "{\n  \"status\": {\n    \"status\": \"ERROR\",\n    \"message\": \"Send message failed. See the logs.\"\n  }\n}"
-}
-```
 
 Method call data:
 
@@ -382,6 +386,7 @@ spec:
     getSchemaRetryCount: 10 // number of retries when requesting an xml schema
     getSchemaRetryDelay: 1 // delay between attempts to load xml schema
     schemaProtoLink: "" // link to the api to get the base64 proto schema for the service
+    descriptorsCacheExpiry: 10 // service descriptors cache clearing frequency
   pins: // pins are used to communicate with codec components to parse message data
     - name: to_codec
       connection-type: mq
