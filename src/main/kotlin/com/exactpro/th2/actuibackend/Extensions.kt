@@ -39,3 +39,12 @@ fun Exception.getCauseEscapeCoroutineException(): Throwable? {
     return rootCause
 }
 
+fun Exception.getMessagesFromStackTrace(): String {
+    val stringBuilder = StringBuilder()
+    var rootCause: Throwable? = this
+    while (rootCause?.cause != null) {
+        stringBuilder.append(rootCause.message ?: "", "\n")
+        rootCause = rootCause.cause
+    }
+    return String(stringBuilder)
+}

@@ -16,7 +16,7 @@
 
 package com.exactpro.th2.actuibackend.schema
 
-import Configuration
+import com.exactpro.th2.actuibackend.Context
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.call.*
 import io.ktor.client.features.*
@@ -34,7 +34,7 @@ import org.ehcache.config.builders.ExpiryPolicyBuilder
 import org.ehcache.config.builders.ResourcePoolsBuilder
 import java.time.Duration
 
-class ServiceProtoLoader(val configuration: Configuration, val objectMapper: ObjectMapper) {
+class ServiceProtoLoader(private val context: Context) {
 
     companion object {
         private val logger = KotlinLogging.logger { }
@@ -51,10 +51,10 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
         CacheConfigurationBuilder.newCacheConfigurationBuilder(
             String::class.java,
             ResponseInfo::class.java,
-            ResourcePoolsBuilder.heap(configuration.protoCacheSize.value.toLong())
+            ResourcePoolsBuilder.heap(context.configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                .timeToLiveExpiration(Duration.ofSeconds(configuration.descriptorsCacheExpiry.value.toLong()))
+                .timeToLiveExpiration(Duration.ofSeconds(context.configuration.descriptorsCacheExpiry.value.toLong()))
         )
             .build()
     )
@@ -64,7 +64,7 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     private fun createUrl(serviceName: String): String {
         return String.format(
             "%s/%s/%s",
-            configuration.schemaProtoLink.value,
+            context.configuration.schemaProtoLink.value,
             serviceType,
             serviceName
         )
@@ -98,7 +98,7 @@ class ServiceProtoLoader(val configuration: Configuration, val objectMapper: Obj
     suspend fun getServiceProto(serviceName: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                objectMapper.readTree(loadServiceProtoBase64(serviceName)).let { jsonTree ->
+                context.jacksonMapper.readTree(loadServiceProtoBase64(serviceName)).let { jsonTree ->
                     jsonTree.get("content").textValue().also {
                         serviceDescriptorCache.put(serviceName, ResponseInfo(it))
                     }

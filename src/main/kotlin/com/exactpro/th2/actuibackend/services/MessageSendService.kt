@@ -16,6 +16,7 @@
 
 package com.exactpro.th2.actuibackend.services
 
+import com.exactpro.th2.actuibackend.Context
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.requests.MethodCallRequest
 import com.exactpro.th2.actuibackend.entities.responces.MethodCallResponse
@@ -32,7 +33,7 @@ import kotlinx.coroutines.withContext
 class MessageSendService(
     private val rabbitMqService: RabbitMqService,
     private val grpcService: GrpcService,
-    private val jacksonMapper: ObjectMapper
+    private val context: Context
 ) {
 
     private val actNameRabbit = "act-ui sendMessage"
@@ -68,7 +69,7 @@ class MessageSendService(
                     },
                     object : IBodyData {
                         val type = "message"
-                        val data = jacksonMapper.writeValueAsString(request.message)
+                        val data = context.jacksonMapper.writeValueAsString(request.message)
                     },
                     object : IBodyData {
                         val type = "message"

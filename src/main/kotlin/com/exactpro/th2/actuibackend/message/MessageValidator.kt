@@ -16,7 +16,6 @@
 
 package com.exactpro.th2.actuibackend.message
 
-import Configuration
 import com.exactpro.sf.common.messages.structures.IFieldStructure
 import com.exactpro.sf.common.messages.structures.impl.MessageStructure
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
@@ -25,9 +24,7 @@ import com.exactpro.th2.actuibackend.schema.SchemaParser
 import mu.KotlinLogging
 import kotlin.collections.set
 
-class MessageValidator(
-    val configuration: Configuration, private val schemaParser: SchemaParser
-) {
+class MessageValidator(private val schemaParser: SchemaParser) {
 
     companion object {
         val logger = KotlinLogging.logger { }

@@ -16,18 +16,16 @@
 
 package com.exactpro.th2.actuibackend.schema
 
-import Configuration
 import com.exactpro.sf.common.impl.messages.xml.configuration.JavaType
 import com.exactpro.sf.common.messages.structures.IDictionaryStructure
 import com.exactpro.sf.common.messages.structures.IFieldStructure
 import com.exactpro.sf.common.messages.structures.impl.MessageStructure
 import com.exactpro.sf.common.messages.structures.loaders.XmlDictionaryStructureLoader
-import com.exactpro.th2.actuibackend.configuration.Variable
+import com.exactpro.th2.actuibackend.Context
 import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
-import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.*
@@ -40,7 +38,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import org.apache.http.client.HttpResponseException
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
 import org.ehcache.config.builders.CacheManagerBuilder
@@ -48,7 +45,8 @@ import org.ehcache.config.builders.ExpiryPolicyBuilder
 import org.ehcache.config.builders.ResourcePoolsBuilder
 import java.time.Duration.ofSeconds
 
-class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMapper) {
+
+class SchemaParser(private val context: Context) {
 
     companion object {
         private val TH2_CONN = setOf("th2-conn")
@@ -57,8 +55,8 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
         private const val SCHEMA_NAME = "http://json-schema.org/draft-07/schema#"
     }
 
-    private val getSchemaRetryCount = configuration.getSchemaRetryCount.value.toLong()
-    private val getSchemaRetryDelay = configuration.getSchemaRetryDelay.value.toLong()
+    private val getSchemaRetryCount = context.configuration.getSchemaRetryCount.value.toLong()
+    private val getSchemaRetryDelay = context.configuration.getSchemaRetryDelay.value.toLong()
 
     private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
     private val jsonTreeCache: Cache<String, JsonNode> = manager.createCache(
@@ -69,12 +67,12 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
             ResourcePoolsBuilder.heap(1)
         ).withExpiry(
             ExpiryPolicyBuilder
-                .timeToLiveExpiration(ofSeconds(configuration.schemaCacheExpiry.value.toLong()))
+                .timeToLiveExpiration(ofSeconds(context.configuration.schemaCacheExpiry.value.toLong()))
         )
             .build()
     )
 
-    private val TH2_ACT = configuration.actTypes
+    private val TH2_ACT = context.configuration.actTypes
 
 
     @KtorExperimentalAPI
@@ -88,7 +86,7 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
                 response = try {
                     ResponseObject(
                         data = httpClient.request<HttpResponse> {
-                            url(configuration.schemaXMLLink.value)
+                            url(context.configuration.schemaXMLLink.value)
                             timeout {
                                 requestTimeoutMillis = 10000
                             }
@@ -116,7 +114,7 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
             if (jsonTreeCache.containsKey(JSON_TREE)) {
                 jsonTreeCache.get(JSON_TREE)
             } else {
-                objectMapper.readTree(getSchemaXml()).let {
+                context.jacksonMapper.readTree(getSchemaXml()).let {
                     jsonTreeCache.put(JSON_TREE, it)
                     it
                 }

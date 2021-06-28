@@ -15,10 +15,6 @@
  ******************************************************************************/
 
 import com.exactpro.th2.actuibackend.configuration.Variable
-import com.exactpro.th2.common.grpc.EventBatch
-import com.exactpro.th2.common.grpc.MessageBatch
-import com.exactpro.th2.common.schema.factory.CommonFactory
-import com.exactpro.th2.common.schema.message.MessageRouter
 
 
 class CustomConfigurationClass {
@@ -45,17 +41,7 @@ class CustomConfigurationClass {
 }
 
 
-class Configuration(args: Array<String>) {
-
-    private val configurationFactory = CommonFactory.createFromArguments(*args)
-
-    val messageRouterParsedBatch: MessageRouter<MessageBatch>
-        get() = configurationFactory.messageRouterParsedBatch
-
-    val eventRouter: MessageRouter<EventBatch>
-        get() = configurationFactory.eventBatchRouter
-
-    private val customConfiguration = configurationFactory.getCustomConfiguration(CustomConfigurationClass::class.java)
+class Configuration(customConfiguration: CustomConfigurationClass) {
 
     val hostname: Variable = Variable("hostname", customConfiguration.hostname, "localhost")
 

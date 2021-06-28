@@ -30,6 +30,7 @@ import com.exactpro.th2.common.grpc.EventBatch
 import com.exactpro.th2.common.grpc.EventID
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageBatch
+import com.exactpro.th2.common.schema.message.MessageRouter
 import com.fasterxml.jackson.core.JsonProcessingException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -38,7 +39,11 @@ import mu.KotlinLogging
 import java.io.IOException
 
 
-class RabbitMqService(private val context: Context) {
+class RabbitMqService(
+    private val context: Context,
+    private val messageRouterParsedBatch: MessageRouter<MessageBatch>,
+    private val eventRouter: MessageRouter<EventBatch>
+) {
 
     companion object {
         val logger = KotlinLogging.logger { }
@@ -55,7 +60,7 @@ class RabbitMqService(private val context: Context) {
 
     private fun sendMessage(message: Message, sessionAlias: String?, parentEventId: EventID) {
         try {
-            configuration.messageRouterParsedBatch.sendAll(
+            messageRouterParsedBatch.sendAll(
                 MessageBatch.newBuilder().addMessages(
                     Message.newBuilder(message).setParentEventId(parentEventId).build()
                 ).build(), sessionAlias
@@ -92,7 +97,7 @@ class RabbitMqService(private val context: Context) {
 
             val protoEvent = event.toProtoEvent(parentEventId)
             try {
-                configuration.eventRouter.send(
+                eventRouter.send(
                     EventBatch.newBuilder().addEvents(protoEvent).build(), "publish", "event"
                 )
                 protoEvent.id

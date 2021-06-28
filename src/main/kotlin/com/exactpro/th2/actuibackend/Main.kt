@@ -16,6 +16,7 @@
 
 package com.exactpro.th2.actuibackend
 
+import CustomConfigurationClass
 import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
@@ -29,7 +30,13 @@ import com.exactpro.th2.actuibackend.services.grpc.GrpcService
 import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
 import com.exactpro.th2.common.event.Event
 import com.exactpro.th2.common.event.IBodyData
+import com.exactpro.th2.common.grpc.EventBatch
 import com.exactpro.th2.common.grpc.EventID
+import com.exactpro.th2.common.grpc.MessageBatch
+import com.exactpro.th2.common.metrics.liveness
+import com.exactpro.th2.common.metrics.readiness
+import com.exactpro.th2.common.schema.factory.CommonFactory
+import com.exactpro.th2.common.schema.message.MessageRouter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -46,29 +53,66 @@ import io.ktor.util.*
 import kotlinx.coroutines.*
 import mu.KotlinLogging
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.concurrent.locks.Condition
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 import kotlin.system.measureTimeMillis
 
+private val logger = KotlinLogging.logger {}
 
-class Main(args: Array<String>) {
-    private val logger = KotlinLogging.logger {}
-    private val context = Context(args)
-    private val configuration = context.configuration
-    private val jacksonMapper = context.jacksonMapper
-    private val timeout = context.timeout
-    private val cacheControl = context.cacheControl
-    private val serviceProtoLoader = ServiceProtoLoader(configuration, jacksonMapper)
-    private val schemaParser = SchemaParser(configuration, jacksonMapper)
-    private val rabbitMqService = RabbitMqService(context)
-    private val messageValidator = MessageValidator(configuration, schemaParser)
-    private val protoSchemaCache = ProtoSchemaCache(context, serviceProtoLoader, schemaParser)
-    private val actGrpcService = GrpcService(context, protoSchemaCache, schemaParser)
-    private val messageService = MessageSendService(rabbitMqService, actGrpcService, jacksonMapper)
+class Main {
 
+    private val configurationFactory: CommonFactory
+    private val messageRouterParsedBatch: MessageRouter<MessageBatch>
+    private val eventRouter: MessageRouter<EventBatch>
+    private val context: Context
+    private val serviceProtoLoader: ServiceProtoLoader
+    private val schemaParser: SchemaParser
+    private val protoSchemaCache: ProtoSchemaCache
+    private val messageValidator: MessageValidator
+    private val rabbitMqService: RabbitMqService
+    private val actGrpcService: GrpcService
+    private val messageService: MessageSendService
+    private val cacheControl: CacheControl
+    private val jacksonMapper: ObjectMapper
+
+    private val resources: Deque<AutoCloseable> = ConcurrentLinkedDeque()
+    private val lock = ReentrantLock()
+    private val condition: Condition = lock.newCondition()
+
+    constructor(args: Array<String>) {
+
+        configureShutdownHook(resources, lock, condition)
+
+        configurationFactory = CommonFactory.createFromArguments(*args)
+        resources += configurationFactory
+
+        messageRouterParsedBatch = configurationFactory.messageRouterParsedBatch
+        resources += messageRouterParsedBatch
+
+        eventRouter = configurationFactory.eventBatchRouter
+        resources += eventRouter
+
+        context = Context(configurationFactory.getCustomConfiguration(CustomConfigurationClass::class.java))
+
+        serviceProtoLoader = ServiceProtoLoader(context)
+        schemaParser = SchemaParser(context)
+        protoSchemaCache = ProtoSchemaCache(context, serviceProtoLoader, schemaParser)
+        messageValidator = MessageValidator(schemaParser)
+
+        rabbitMqService = RabbitMqService(context, messageRouterParsedBatch, eventRouter)
+        actGrpcService = GrpcService(context, protoSchemaCache, schemaParser)
+        messageService = MessageSendService(rabbitMqService, actGrpcService, context)
+        cacheControl = context.cacheControl
+        jacksonMapper = context.jacksonMapper
+    }
 
     @InternalAPI
     private suspend fun sendErrorCode(call: ApplicationCall, e: Exception, code: HttpStatusCode) {
         withContext(NonCancellable) {
-            call.respondText(e.message ?: e.rootCause?.message ?: e.toString(), ContentType.Text.Plain, code)
+            call.respondText(e.getMessagesFromStackTrace(), ContentType.Text.Plain, code)
         }
     }
 
@@ -89,10 +133,11 @@ class Main(args: Array<String>) {
                 try {
                     try {
                         launch {
-                            withTimeout(timeout) {
+                            withTimeout(context.timeout) {
                                 cacheControl?.let { call.response.cacheControl(it) }
                                 call.respondText(
-                                    jacksonMapper.asStringSuspend(calledFun.invoke()), ContentType.Application.Json
+                                    jacksonMapper.asStringSuspend(calledFun.invoke()),
+                                    ContentType.Application.Json
                                 )
                             }
                         }.join()
@@ -116,10 +161,23 @@ class Main(args: Array<String>) {
 
     @InternalAPI
     fun run() {
+        logger.info { "Starting the box" }
 
-        System.setProperty(IO_PARALLELISM_PROPERTY_NAME, configuration.ioDispatcherThreadPoolSize.value)
+        liveness = true
 
-        embeddedServer(Netty, configuration.port.value.toInt()) {
+        startServer()
+
+        readiness = true
+
+        awaitShutdown(lock, condition)
+    }
+
+    @InternalAPI
+    private fun startServer() {
+
+        System.setProperty(IO_PARALLELISM_PROPERTY_NAME, context.configuration.ioDispatcherThreadPoolSize.value)
+
+        embeddedServer(Netty, context.configuration.port.value.toInt()) {
 
             install(Compression)
             install(ContentNegotiation) {
@@ -168,7 +226,8 @@ class Main(args: Array<String>) {
                     val queryParametersMap = call.request.queryParameters.toMap()
                     val rawMessage = call.receiveText()
                     handleRequest(call, "message", cacheControl, queryParametersMap) {
-                        val request = MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
+                        val request =
+                            MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
                         messageValidator.validate(request)
                         messageService.sendRabbitMessage(request, rabbitMqService.parentEventId).also {
                             call.response.cacheControl(CacheControl.NoCache(null))
@@ -219,12 +278,54 @@ class Main(args: Array<String>) {
             }
         }.start(false)
 
-        logger.info { "serving on: http://${configuration.hostname.value}:${configuration.port.value}" }
+        logger.info { "serving on: http://${context.configuration.hostname.value}:${context.configuration.port.value}" }
+    }
+
+    private fun configureShutdownHook(resources: Deque<AutoCloseable>, lock: ReentrantLock, condition: Condition) {
+        Runtime.getRuntime().addShutdownHook(thread(
+            start = false,
+            name = "Shutdown hook"
+        ) {
+            logger.info { "Shutdown start" }
+            readiness = false
+            try {
+                lock.lock()
+                condition.signalAll()
+            } finally {
+                lock.unlock()
+            }
+            resources.descendingIterator().forEachRemaining { resource ->
+                try {
+                    resource.close()
+                } catch (e: Exception) {
+                    logger.error(e) { "Cannot close resource ${resource::class}" }
+                }
+            }
+            liveness = false
+            logger.info { "Shutdown end" }
+        })
+    }
+
+    @Throws(InterruptedException::class)
+    private fun awaitShutdown(lock: ReentrantLock, condition: Condition) {
+        try {
+            lock.lock()
+            logger.info { "Wait shutdown" }
+            condition.await()
+            logger.info { "App shutdown" }
+        } finally {
+            lock.unlock()
+        }
     }
 }
 
 
 @InternalAPI
 fun main(args: Array<String>) {
-    Main(args).run()
+    try {
+        Main(args).run()
+    } catch (ex: Exception) {
+        logger.error(ex) { "Cannot start the box" }
+        exitProcess(1)
+    }
 }
