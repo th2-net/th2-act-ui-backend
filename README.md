@@ -379,9 +379,9 @@ spec:
     protoCompileDirectory: "src/main/resources/protobuf" // directory for compiling proto files
     namespace: "th2-qa" // namespace for sending grpc messages
     actTypes: ["th2-act"] // the types of services the *acts* method will look for
-    schemaCacheExpiry: 24 * 60 * 60 // schemaXML cache clearing frequency
+    schemaCacheExpiry: 86400 // schemaXML cache clearing frequency
 
-    protoCacheExpiry: 60 * 60 // compiled proto schema cache clearing frequency
+    protoCacheExpiry: 3600 // compiled proto schema cache clearing frequency
     protoCacheSize: 100 // compiled proto schema cache size
     getSchemaRetryCount: 10 // number of retries when requesting an xml schema
     getSchemaRetryDelay: 1 // delay between attempts to load xml schema
