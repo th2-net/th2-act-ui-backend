@@ -30,7 +30,7 @@
 
 
 #### POST
-`http://localhost:8080/message` - send message to codec. returns a parent event id
+`http://localhost:8080/message` - send message to codec.
 
 - `session` - text, session alias  **Required**. Example: `test02fix10`
 - `dictionary` - text, name of dictionary for parsing the message  **Required**. Example: `fix50-test`
@@ -44,7 +44,7 @@ Response:
   "dictionary": "...",
   "messageType": "..."
 }
-
+eventId - status event id.
 session, dictionary, messageType - same as request.
 ```
 
@@ -102,12 +102,11 @@ Message send request:
 
 ```
 
-`http://localhost:8080/method` - call gRPC method with specified message. returns a response message. 
+`http://localhost:8080/method` - call gRPC method with specified message. 
 
 - `fullServiceName` - text, name of service whose method we call  **Required**. Example: `act:Act`
 - `methodName` - text, name of calling method  **Required**. Example: `sendMessage`
 
-If the message contains the field `parentEventId` then it will be attached to it otherwise the message will be attached to the generated event. 
 
 Response:
 ```
@@ -116,9 +115,9 @@ Response:
     "methodName": "...",
     "fullServiceName": "...",
     "responseMessage": "{\n  \"status\": {\n    \"status\": \"SUCCESS\",\n    \"message\": \"\"\n  },\n  \"checkpointId\": {\n    \"id\": \"e365e960-7163-11eb-ae4a-85aa72af0f35\",\n    \"sessionAliasToDirectionCheckpoint\": {\n    }\n  }"
-
-    methodName, fullServiceName - same as request.
 }
+eventId - status event id.  
+methodName, fullServiceName - same as request.
 ```
 
 

@@ -22,6 +22,9 @@ import com.exactpro.th2.actuibackend.entities.exceptions.ProtoParseException
 import com.exactpro.th2.actuibackend.entities.protobuf.ProtoMethod
 import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.protobuf.DescriptorProtos
 import com.google.protobuf.Descriptors
 import com.google.protobuf.DynamicMessage
@@ -31,7 +34,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 
-data class JsonSchema(val schemaName: String, val schema: String)
+data class JsonSchema private constructor(val schemaName: String, val schema: JsonNode) {
+    companion object {
+        private val parentEventIdField = "parentEventId"
+
+        suspend fun createJsonSchema(schemaName: String, schema: JsonNode): JsonSchema {
+            schema.findParents(parentEventIdField)?.let { parents ->
+                parents.forEach {
+                    (it.findValue(parentEventIdField) as ObjectNode).removeAll()
+                    (it as ObjectNode).remove(parentEventIdField)
+                }
+            }
+            return JsonSchema(schemaName, schema)
+        }
+    }
+}
 
 data class ProtoSchema(
     val actName: String,
@@ -112,12 +129,12 @@ data class ProtoSchema(
                 jsonParser.merge(jsonMessage, dmBuilder)
                 dmBuilder.build()
             } catch (e: InvalidProtocolBufferException) {
-                logger.error(e) {  }
+                logger.error(e) { }
                 throw JsonToProtoParseException(
                     "Cannot parse json message to protobuf dynamic message. Incorrect json format. ${e.message}"
                 )
             } catch (e: Exception) {
-                logger.error(e) {  }
+                logger.error(e) { }
                 throw JsonToProtoParseException("Cannot parse json message to protobuf dynamic message. ${e.message}")
             }
         }

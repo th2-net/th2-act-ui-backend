@@ -81,8 +81,7 @@ class GrpcService(
         parentEvent: EventID
     ): DynamicMessage {
         val parentEventFieldDescriptor = messageDescriptor.findFieldByName(PARENT_EVENT_ID_FIELD)
-        return if (parentEventFieldDescriptor != null && !message.hasField(parentEventFieldDescriptor)
-        ) {
+        return if (parentEventFieldDescriptor != null) {
             DynamicMessage.newBuilder(message)
                 .setField(parentEventFieldDescriptor, parentEvent).build()
         } else {

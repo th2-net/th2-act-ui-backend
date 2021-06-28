@@ -22,6 +22,7 @@ import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
+import com.fasterxml.jackson.databind.JsonNode
 import kotlinx.coroutines.runBlocking
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
@@ -85,7 +86,7 @@ class ProtoSchemaCache(
         return getSchemaByServiceName(name).getServiceInfo(name)
     }
 
-    suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, String> {
+    suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, JsonNode> {
         val schema = getPackageByActName(name.actName).getJsonSchemaByService(name)
         return if (methodName == null) {
             schema

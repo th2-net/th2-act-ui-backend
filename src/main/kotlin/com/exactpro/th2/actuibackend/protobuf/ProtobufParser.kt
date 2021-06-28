@@ -25,6 +25,8 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.github.os72.protocjar.Protoc
 import com.google.protobuf.DescriptorProtos
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.io.File
@@ -109,7 +111,7 @@ class ProtobufParser(private val context: Context) {
             val schema = generateSchema(protoPaths, protoFile, tempDir)
             schema.fileList.filter { resolved.add(it.name) }.flatMap { fd ->
                 fd.dependencyList.filterNot(resolved::contains)
-                        .flatMap { lookupProtos(protoPaths, it, tempDir, resolved) } + fd
+                    .flatMap { lookupProtos(protoPaths, it, tempDir, resolved) } + fd
             }
         }
     }
@@ -146,11 +148,13 @@ class ProtobufParser(private val context: Context) {
                         "--jsonschema_out=disallow_additional_properties,json_fieldnames:$tempSchemasFolder"
                     )
                 )
-                File(tempSchemasFolder.toUri()).walk().filter { it.isFile }.map { file ->
-                    JsonSchema(file.name, Files.newBufferedReader(file.toPath()).use {
-                        it.readText()
-                    })
-                }.toList()
+                File(tempSchemasFolder.toUri()).walk().filter { it.isFile }.toList().map { file ->
+                    async {
+                        JsonSchema.createJsonSchema(file.name, Files.newBufferedReader(file.toPath()).use {
+                            context.jacksonMapper.readTree(it.readText())
+                        })
+                    }
+                }.awaitAll()
             } finally {
                 tempSchemasFolder?.toFile()?.deleteRecursively()
             }
@@ -238,10 +242,10 @@ class ProtobufParser(private val context: Context) {
                 DependentSchemas(actName, protoSchemas)
             } catch (e: Exception) {
                 val message = "Unable to parse json to .proto file.".also {
-                        logger.error(e) {
-                            "$it File path: $tempDirectoryProto Json tree: ${jsonTree.toPrettyString()}"
-                        }
+                    logger.error(e) {
+                        "$it File path: $tempDirectoryProto Json tree: ${jsonTree.toPrettyString()}"
                     }
+                }
                 throw JsonToProtoParseException("$message ${e.message}")
             } finally {
                 tempDirectoryProto?.deleteRecursively()

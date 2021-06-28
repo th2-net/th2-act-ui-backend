@@ -18,6 +18,7 @@ package com.exactpro.th2.actuibackend.protobuf
 
 import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
+import com.fasterxml.jackson.databind.JsonNode
 
 class DependentSchemas(private val actName: String, protoSchemas: List<ProtoSchema>) {
     private val protoNameToProtoSchema = protoSchemas
@@ -34,7 +35,7 @@ class DependentSchemas(private val actName: String, protoSchemas: List<ProtoSche
         return serviceNameToSchema[name] ?: throw InvalidRequestException("Service: '$name' not found")
     }
 
-    fun getJsonSchemaByService(name: FullServiceName): Map<String, String> {
+    fun getJsonSchemaByService(name: FullServiceName): Map<String, JsonNode> {
         val schema = getService(name)
         return schema.protoSchema.filter { it.name != schema.mainSchema.name }.mapNotNull {
             protoNameToProtoSchema[it.name]?.jsonSchemaMap?.entries
