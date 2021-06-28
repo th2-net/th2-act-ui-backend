@@ -31,6 +31,7 @@ import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.*
+import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -88,6 +89,9 @@ class SchemaParser(val configuration: Configuration, val objectMapper: ObjectMap
                     ResponseObject(
                         data = httpClient.request<HttpResponse> {
                             url(configuration.schemaXMLLink.value)
+                            timeout {
+                                requestTimeoutMillis = 10000
+                            }
                             method = HttpMethod.Get
                         }.content.toByteArray()
                     )
