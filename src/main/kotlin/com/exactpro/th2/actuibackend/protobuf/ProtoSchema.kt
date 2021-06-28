@@ -25,6 +25,7 @@ import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.TextNode
 import com.google.protobuf.DescriptorProtos
 import com.google.protobuf.Descriptors
 import com.google.protobuf.DynamicMessage
@@ -37,14 +38,26 @@ import mu.KotlinLogging
 data class JsonSchema private constructor(val schemaName: String, val schema: JsonNode) {
     companion object {
         private val parentEventIdField = "parentEventId"
+        private val refValues = "\$ref"
+        private val definitions = "#/definitions/"
 
-        suspend fun createJsonSchema(schemaName: String, schema: JsonNode): JsonSchema {
+        private fun deleteParentEventId(schema: JsonNode) {
             schema.findParents(parentEventIdField)?.let { parents ->
                 parents.forEach {
                     (it.findValue(parentEventIdField) as ObjectNode).removeAll()
                     (it as ObjectNode).remove(parentEventIdField)
                 }
             }
+        }
+        private fun setDefinitionsPrefix(schema: JsonNode) {
+            schema.findParents(refValues).forEach {
+                (it as ObjectNode).put(refValues, "${definitions}${it.findValue(refValues).textValue()}")
+            }
+        }
+
+        suspend fun createJsonSchema(schemaName: String, schema: JsonNode): JsonSchema {
+            deleteParentEventId(schema)
+            setDefinitionsPrefix(schema)
             return JsonSchema(schemaName, schema)
         }
     }
