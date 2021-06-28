@@ -16,4 +16,6 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-open class InfraSchemaDataException(message: String) : CustomException(message)
+import java.lang.Exception
+
+open class InfraSchemaDataException(message: String, exception: Exception? = null) : CustomException(message, exception)

@@ -416,7 +416,7 @@ spec:
         memory: 700Mi
         cpu: 310m
       requests:
-        memory: 500Mi
+        memory: 300Mi
         cpu: 50m
 
 ```

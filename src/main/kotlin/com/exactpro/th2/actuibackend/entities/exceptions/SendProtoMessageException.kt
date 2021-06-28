@@ -16,4 +16,6 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-class SendProtoMessageException(message: String) : CustomException(message)
+import java.lang.Exception
+
+class SendProtoMessageException(message: String, exception: Exception? = null) : CustomException(message, exception)

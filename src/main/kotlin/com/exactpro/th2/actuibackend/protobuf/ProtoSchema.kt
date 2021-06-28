@@ -37,21 +37,27 @@ import mu.KotlinLogging
 
 data class JsonSchema private constructor(val schemaName: String, val schema: JsonNode) {
     companion object {
-        private val parentEventIdField = "parentEventId"
-        private val refValues = "\$ref"
-        private val definitions = "#/definitions/"
+        private const val parentEventIdField = "parentEventId"
+        private const val refValues = "\$ref"
+        private const val definitions = "#/definitions/"
 
         private fun deleteParentEventId(schema: JsonNode) {
             schema.findParents(parentEventIdField)?.let { parents ->
-                parents.forEach {
-                    (it.findValue(parentEventIdField) as ObjectNode).removeAll()
-                    (it as ObjectNode).remove(parentEventIdField)
+                parents.forEach { node ->
+                    if (node is ObjectNode) {
+                        node.findValue(parentEventIdField)?.let {
+                            if (it is ObjectNode) it.removeAll()
+                        }
+                        node.remove(parentEventIdField)
+                    }
                 }
             }
         }
+
         private fun setDefinitionsPrefix(schema: JsonNode) {
             schema.findParents(refValues).forEach {
-                (it as ObjectNode).put(refValues, "${definitions}${it.findValue(refValues).textValue()}")
+                if (it is ObjectNode)
+                    it.put(refValues, "${definitions}${it.findValue(refValues).textValue()}")
             }
         }
 
@@ -142,13 +148,15 @@ data class ProtoSchema(
                 jsonParser.merge(jsonMessage, dmBuilder)
                 dmBuilder.build()
             } catch (e: InvalidProtocolBufferException) {
-                logger.error(e) { }
-                throw JsonToProtoParseException(
-                    "Cannot parse json message to protobuf dynamic message. Incorrect json format. ${e.message}"
-                )
+                "Cannot parse json message to protobuf dynamic message. Incorrect json format. ${e.message}".let {
+                    logger.error(e) { it }
+                    throw JsonToProtoParseException(it, e)
+                }
             } catch (e: Exception) {
-                logger.error(e) { }
-                throw JsonToProtoParseException("Cannot parse json message to protobuf dynamic message. ${e.message}")
+                "Cannot parse json message to protobuf dynamic message. ${e.message}".let {
+                    logger.error(e) { it }
+                    throw JsonToProtoParseException(it, e)
+                }
             }
         }
     }

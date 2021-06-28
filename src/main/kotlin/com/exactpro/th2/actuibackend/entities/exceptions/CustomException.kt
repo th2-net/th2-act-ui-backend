@@ -16,4 +16,4 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-open class CustomException(message: String) : Exception(message)
+open class CustomException(message: String, exception: Exception? = null) : Exception(message, exception)

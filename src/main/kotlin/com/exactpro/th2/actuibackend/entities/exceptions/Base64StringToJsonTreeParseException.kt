@@ -16,4 +16,7 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-class Base64StringToJsonTreeParseException(message: String) : InvalidRequestException(message)
+import java.lang.Exception
+
+class Base64StringToJsonTreeParseException(message: String, exception: Exception) :
+    InvalidRequestException(message, exception)

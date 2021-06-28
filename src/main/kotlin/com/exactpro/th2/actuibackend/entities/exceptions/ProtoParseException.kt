@@ -16,4 +16,6 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-class ProtoParseException(message: String) : CustomException(message)
+import java.lang.Exception
+
+class ProtoParseException(message: String, exception: Exception? = null) : CustomException(message, exception)

@@ -181,7 +181,7 @@ class ProtobufParser(private val context: Context) {
                 it
             }
         } catch (e: IOException) {
-            throw ProtoParseException("Failed to save proto file: $data to directory: $temporaryFiles")
+            throw ProtoParseException("Failed to save proto file: $data to directory: $temporaryFiles", e)
         }
     }
 
@@ -203,7 +203,7 @@ class ProtobufParser(private val context: Context) {
                         }
                     }
                 }
-                throw Base64StringToJsonTreeParseException("$message ${e.message}")
+                throw Base64StringToJsonTreeParseException("$message ${e.message}", e)
             }
         }
     }
@@ -246,7 +246,7 @@ class ProtobufParser(private val context: Context) {
                         "$it File path: $tempDirectoryProto Json tree: ${jsonTree.toPrettyString()}"
                     }
                 }
-                throw JsonToProtoParseException("$message ${e.message}")
+                throw JsonToProtoParseException("$message ${e.message}", e)
             } finally {
                 tempDirectoryProto?.deleteRecursively()
             }

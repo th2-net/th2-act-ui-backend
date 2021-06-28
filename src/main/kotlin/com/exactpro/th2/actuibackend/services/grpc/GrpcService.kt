@@ -117,8 +117,10 @@ class GrpcService(
             logger.error(e) { }
             throw e
         } catch (e: Exception) {
-            logger.error(e) { }
-            throw SendProtoMessageException("Can not call grpc service: $callRequest. ${e.message}")
+            "Can not call grpc service: $callRequest. ${e.message}".let {
+                logger.error(e) { it }
+                throw SendProtoMessageException(it, e)
+            }
         } finally {
             channel?.shutdown()
         }
@@ -151,7 +153,11 @@ class GrpcService(
                     responseChannel.send(
                         MethodCallResponse(
                             null,
-                            exception = SendProtoMessageException("Unable to send gRPC message: $requestMessage. ${t?.message ?: ""}")
+                            exception =
+                            SendProtoMessageException(
+                                "Unable to send gRPC message: $requestMessage. ${t?.message ?: ""}",
+                                if (t is Exception) t else null
+                            )
                         )
                     )
                 }
@@ -165,7 +171,7 @@ class GrpcService(
             withTimeout(responseTimeout) {
                 responseChannel.receive().also { message ->
                     message.exception?.let { throw it }
-                    message.message?.let {validateMessage(message.rawMessage!!, it)}
+                    message.message?.let { validateMessage(message.rawMessage!!, it) }
                 }
             }
         } catch (e: TimeoutCancellationException) {
@@ -175,7 +181,8 @@ class GrpcService(
                 logger.error(e) { "gRPC cancel channel from dynamic message: '${requestMessage}'. ${e.message}" }
             }
             throw SendProtoMessageException(
-                "gRPC response timed out after $responseTimeout milliseconds. ${e.message}"
+                "gRPC response timed out after $responseTimeout milliseconds. ${e.message}",
+                e
             )
         }
     }

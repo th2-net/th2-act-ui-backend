@@ -16,4 +16,7 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-open class SchemaValidateException(message: String) : InvalidRequestException(message)
+import java.lang.Exception
+
+open class SchemaValidateException(message: String, exception: Exception? = null) :
+    InvalidRequestException(message, exception)

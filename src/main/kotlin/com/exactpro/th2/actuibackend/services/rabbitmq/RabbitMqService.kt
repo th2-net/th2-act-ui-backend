@@ -66,10 +66,13 @@ class RabbitMqService(
                 ).build(), sessionAlias
             )
         } catch (e: Exception) {
-            logger.error(e) { }
-            throw InvalidRequestException("Can not send message. Session alias: '$sessionAlias' message: $message")
+            "Can not send message. Session alias: '$sessionAlias' message: $message".let {
+                logger.error(e) { it }
+                throw InvalidRequestException(it, e)
+            }
         }
     }
+
 
     @Throws(JsonProcessingException::class, InvalidRequestException::class)
     suspend fun createAndStoreEvent(
@@ -102,8 +105,10 @@ class RabbitMqService(
                 )
                 protoEvent.id
             } catch (e: IOException) {
-                logger.error(e) { }
-                throw InvalidRequestException("Can not send event:  '${protoEvent.id.id}'")
+                "Can not send event:  '${protoEvent.id.id}'".let {
+                    logger.error(e) { it }
+                    throw InvalidRequestException(it, e)
+                }
             }
         }
     }
