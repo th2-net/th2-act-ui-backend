@@ -66,7 +66,7 @@ class GrpcService(
     private fun validateMessage(message: DynamicMessage, stringMessage: String) {
         val statusField = message.allFields.entries.firstOrNull { it.key.name.toLowerCase().contains(statusField) }
         if (statusField?.value?.toString()?.toUpperCase() == errorStatus)
-            throw SendProtoMessageException("Bad response from act. Message: $stringMessage")
+            throw SendProtoMessageException(stringMessage)
 
         message.allFields.forEach {
             if (it.value is DynamicMessage) {

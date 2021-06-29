@@ -23,7 +23,7 @@ class CustomConfigurationClass {
     var responseTimeout: Int = 6000
     var clientCacheTimeout: Int = 60
     var ioDispatcherThreadPoolSize: Int = 10
-    var schemaXMLLink: String = ""
+    var schemaDefinitionLink: String = ""
     val protoCompileDirectory: String = "src/main/resources/protobuf"
     val namespace: String = "th2-qa"
     val actTypes: Set<String> = setOf("th2-act")
@@ -32,11 +32,11 @@ class CustomConfigurationClass {
     val protoCacheSize = 100
     val getSchemaRetryCount = 10
     val getSchemaRetryDelay = 1
-    val schemaProtoLink: String = ""
+    val schemaDescriptorsLink: String = ""
     val descriptorsCacheExpiry = 10
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaProtoLink='$schemaProtoLink', descriptorsCacheExpiry=$descriptorsCacheExpiry)"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaDefinitionLink='$schemaDefinitionLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaDescriptorsLink='$schemaDescriptorsLink', descriptorsCacheExpiry=$descriptorsCacheExpiry)"
     }
 }
 
@@ -57,12 +57,12 @@ class Configuration(customConfiguration: CustomConfigurationClass) {
         "clientCacheTimeout", customConfiguration.clientCacheTimeout.toString(), "3600"
     )
 
-    val schemaXMLLink: Variable = Variable(
-        "schemaXMLLink", customConfiguration.schemaXMLLink, ""
+    val schemaDefinitionLink: Variable = Variable(
+        "schemaXMLLink", customConfiguration.schemaDefinitionLink, ""
     )
 
-    val schemaProtoLink: Variable = Variable(
-        "schemaProtoLink", customConfiguration.schemaProtoLink, ""
+    val schemaDescriptorsLink: Variable = Variable(
+        "schemaProtoLink", customConfiguration.schemaDescriptorsLink, ""
     )
 
     val protoCompileDirectory: Variable = Variable(

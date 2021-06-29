@@ -374,7 +374,7 @@ spec:
     clientCacheTimeout: 60 // cached event lifetime in milliseconds
     ioDispatcherThreadPoolSize: 10 // thread pool size for blocking database calls
         
-    schemaXMLLink: "" // link to the desired schema
+    schemaDefinitionLink: "" // link of schema definition
     protoCompileDirectory: "src/main/resources/protobuf" // directory for compiling proto files
     namespace: "th2-qa" // namespace for sending grpc messages
     actTypes: ["th2-act"] // the types of services the *acts* method will look for
@@ -384,7 +384,7 @@ spec:
     protoCacheSize: 100 // compiled proto schema cache size
     getSchemaRetryCount: 10 // number of retries when requesting an xml schema
     getSchemaRetryDelay: 1 // delay between attempts to load xml schema
-    schemaProtoLink: "" // link to the api to get the base64 proto schema for the service
+    schemaDescriptorsLink: "" // link to the api to get the base64 proto schema descriptors for the service
     descriptorsCacheExpiry: 10 // service descriptors cache clearing frequency
   pins: // pins are used to communicate with codec components to parse message data
     - name: to_codec
@@ -402,11 +402,6 @@ spec:
   extended-settings:
     service:
       enabled: false
-      type: NodePort
-      endpoints:
-        - name: 'grpc'
-          targetPort: 8080
-          nodePort: 31467
 
     envVariables:
       JAVA_TOOL_OPTIONS: '-XX:+UseContainerSupport -XX:MaxRAMPercentage=90'

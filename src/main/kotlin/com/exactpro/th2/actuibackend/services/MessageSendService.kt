@@ -25,6 +25,7 @@ import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
 import com.exactpro.th2.common.event.Event
 import com.exactpro.th2.common.event.IBodyData
 import com.exactpro.th2.common.grpc.EventID
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -132,7 +133,17 @@ class MessageSendService(
     }
 
 
-    suspend fun sendGrpcMessage(request: MethodCallRequest, parentEventId: EventID): Map<String, String> {
+    private suspend fun tryToCreateJson(text: String?): Any? {
+        return text?.let {
+            try {
+                context.jacksonMapper.readTree(it)
+            } catch (e: JsonProcessingException) {
+                it
+            }
+        }
+    }
+
+    suspend fun sendGrpcMessage(request: MethodCallRequest, parentEventId: EventID): Map<String, Any?> {
         return withContext(Dispatchers.IO) {
             val subrootEvent = sendSubrootEvent(actNameGrpc, parentEventId)
             var responseInfo: String?
@@ -147,7 +158,7 @@ class MessageSendService(
                 "eventId" to event.id,
                 "methodName" to request.methodName,
                 "fullServiceName" to request.fullServiceName.toString(),
-                "responseMessage" to responseInfo.toString()
+                "responseMessage" to tryToCreateJson(responseInfo)
             )
         }
     }

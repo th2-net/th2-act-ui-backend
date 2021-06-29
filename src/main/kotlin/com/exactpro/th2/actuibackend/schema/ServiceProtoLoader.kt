@@ -17,7 +17,6 @@
 package com.exactpro.th2.actuibackend.schema
 
 import com.exactpro.th2.actuibackend.Context
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.call.*
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -64,7 +63,7 @@ class ServiceProtoLoader(private val context: Context) {
     private fun createUrl(serviceName: String): String {
         return String.format(
             "%s/%s/%s",
-            context.configuration.schemaProtoLink.value,
+            context.configuration.schemaDescriptorsLink.value,
             serviceType,
             serviceName
         )

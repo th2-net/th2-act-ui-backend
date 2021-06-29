@@ -27,8 +27,6 @@ import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import io.ktor.client.*
 import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -86,7 +84,7 @@ class SchemaParser(private val context: Context) {
                 response = try {
                     ResponseObject(
                         data = httpClient.request<HttpResponse> {
-                            url(context.configuration.schemaXMLLink.value)
+                            url(context.configuration.schemaDefinitionLink.value)
                             timeout {
                                 requestTimeoutMillis = 10000
                             }
