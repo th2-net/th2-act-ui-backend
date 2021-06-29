@@ -42,10 +42,10 @@ fun Exception.getCauseEscapeCoroutineException(): Throwable? {
 suspend fun Exception.getMessagesFromStackTrace(): String {
     val stringBuilder = StringBuilder()
     var rootCause: Throwable? = this
-    stringBuilder.append(rootCause?.message ?: "")
     while (rootCause?.cause != null) {
         stringBuilder.append(rootCause.message ?: "", "\n")
         rootCause = rootCause.cause
     }
+    stringBuilder.append(rootCause?.message ?: "")
     return String(stringBuilder)
 }
