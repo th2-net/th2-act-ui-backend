@@ -30,7 +30,7 @@ class ValueChecker {
     companion object {
         private const val falseString = false.toString()
         private const val trueString = true.toString()
-        private val dateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss.SSS").apply {
+        private val dateFormat: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'hh:mm:ss").apply {
             timeZone = TimeZone.getTimeZone("UTC")
         }
         private val checkerMap: Map<JavaType, (Any) -> Boolean> = mapOf(
