@@ -17,11 +17,16 @@
 package com.exactpro.th2.actuibackend.protobuf
 
 import com.exactpro.th2.actuibackend.Context
+import com.exactpro.th2.actuibackend.entities.exceptions.Base64StringToJsonTreeParseException
+import com.exactpro.th2.actuibackend.entities.exceptions.JsonToProtoParseException
 import com.exactpro.th2.actuibackend.entities.exceptions.ProtoParseException
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonNode
 import com.github.os72.protocjar.Protoc
 import com.google.protobuf.DescriptorProtos
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.io.File
@@ -64,7 +69,7 @@ class ProtobufParser(private val context: Context) {
         val defaultPaths = listOf("src/main/resources", "src/test/resources", "/home")
         for (path in defaultPaths) {
             for (file in File(path).walk()) {
-                if (file.name == name) return file.path
+                if (file.name.contains(name)) return file.path
             }
         }
         logger.error { "Cannot find plugin '$name' from paths: $defaultPaths" }
@@ -143,11 +148,13 @@ class ProtobufParser(private val context: Context) {
                         "--jsonschema_out=disallow_additional_properties,json_fieldnames:$tempSchemasFolder"
                     )
                 )
-                File(tempSchemasFolder.toUri()).walk().filter { it.isFile }.map { file ->
-                    JsonSchema(file.name, Files.newBufferedReader(file.toPath()).use {
-                        it.readText()
-                    })
-                }.toList()
+                File(tempSchemasFolder.toUri()).walk().filter { it.isFile }.toList().map { file ->
+                    async {
+                        JsonSchema.createJsonSchema(file.name, Files.newBufferedReader(file.toPath()).use {
+                            context.jacksonMapper.readTree(it.readText())
+                        })
+                    }
+                }.awaitAll()
             } finally {
                 tempSchemasFolder?.toFile()?.deleteRecursively()
             }
@@ -174,22 +181,29 @@ class ProtobufParser(private val context: Context) {
                 it
             }
         } catch (e: IOException) {
-            throw ProtoParseException("Failed to save proto file: $data to directory: $temporaryFiles")
+            throw ProtoParseException("Failed to save proto file: $data to directory: $temporaryFiles", e)
         }
     }
 
-    suspend fun parseBase64ToJsonTree(jsonBase64String: String): JsonNode? {
+    suspend fun parseBase64ToJsonTree(jsonBase64String: String): JsonNode {
         return withContext(Dispatchers.IO) {
-            var jsonString: String? = null
             try {
-                jsonString = String(Base64.getDecoder().decode(jsonBase64String))
+                val jsonString = String(Base64.getDecoder().decode(jsonBase64String))
                 context.jacksonMapper.readTree(jsonString)
             } catch (e: Exception) {
-                if (jsonString == null)
-                    logger.error(e) { "Unable to parse base64 to json string. Base64: $jsonBase64String" }
-                else
-                    logger.error(e) { "Unable to parse json to .proto file. Json: $jsonString" }
-                null
+                val message = when (e) {
+                    is JsonProcessingException -> {
+                        "Unable to parse json string jsonTree.".also {
+                            logger.error(e) { "$it Base64 string: $jsonBase64String" }
+                        }
+                    }
+                    else -> {
+                        "Unable to parse base64 to json string.".also {
+                            logger.error(e) { "$it Base64 string: $jsonBase64String" }
+                        }
+                    }
+                }
+                throw Base64StringToJsonTreeParseException("$message ${e.message}", e)
             }
         }
     }
@@ -208,7 +222,7 @@ class ProtobufParser(private val context: Context) {
         }
     }
 
-    suspend fun parseJsonToProtoSchemas(actName: String, jsonTree: JsonNode): DependentSchemas? {
+    suspend fun parseJsonToProtoSchemas(actName: String, jsonTree: JsonNode): DependentSchemas {
         return withContext(Dispatchers.IO) {
             var tempDirectoryProto: File? = null
             try {
@@ -227,8 +241,12 @@ class ProtobufParser(private val context: Context) {
                 }
                 DependentSchemas(actName, protoSchemas)
             } catch (e: Exception) {
-                logger.error(e) { "Unable to parse json to .proto file. File path: $tempDirectoryProto Json tree: ${jsonTree.toPrettyString()}" }
-                null
+                val message = "Unable to parse json to .proto file.".also {
+                    logger.error(e) {
+                        "$it File path: $tempDirectoryProto Json tree: ${jsonTree.toPrettyString()}"
+                    }
+                }
+                throw JsonToProtoParseException("$message ${e.message}", e)
             } finally {
                 tempDirectoryProto?.deleteRecursively()
             }

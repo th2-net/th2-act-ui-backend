@@ -24,6 +24,7 @@ import com.exactpro.th2.actuibackend.entities.responces.MethodCallResponse
 import com.exactpro.th2.actuibackend.protobuf.ProtoSchemaCache
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.common.grpc.EventID
+import com.exactpro.th2.common.message.message
 import com.google.protobuf.Descriptors
 import com.google.protobuf.DynamicMessage
 import io.grpc.CallOptions
@@ -43,8 +44,7 @@ import mu.KotlinLogging
 class GrpcService(
     private val context: Context,
     private val protoSchemaCache: ProtoSchemaCache,
-    private val schemaParser: SchemaParser,
-    private val parentEvent: EventID
+    private val schemaParser: SchemaParser
 ) {
 
     companion object {
@@ -54,16 +54,34 @@ class GrpcService(
     private val responseTimeout = context.configuration.responseTimeout.value.toLong()
     private val PARENT_EVENT_ID_FIELD = "parent_event_id"
     private val namespace = context.configuration.namespace.value
+    private val statusField = "status"
+    private val errorStatus = "ERROR"
+
     private val boxNameToPort = runBlocking {
         schemaParser.getActs().let {
             schemaParser.getServicePorts(it.toSet())
         }
     }
 
-    private fun setParentEvent(message: DynamicMessage, messageDescriptor: Descriptors.Descriptor): DynamicMessage {
+    private fun validateMessage(message: DynamicMessage, stringMessage: String) {
+        val statusField = message.allFields.entries.firstOrNull { it.key.name.toLowerCase().contains(statusField) }
+        if (statusField?.value?.toString()?.toUpperCase() == errorStatus)
+            throw SendProtoMessageException(stringMessage)
+
+        message.allFields.forEach {
+            if (it.value is DynamicMessage) {
+                validateMessage(it.value as DynamicMessage, stringMessage)
+            }
+        }
+    }
+
+    private fun setParentEvent(
+        message: DynamicMessage,
+        messageDescriptor: Descriptors.Descriptor,
+        parentEvent: EventID
+    ): DynamicMessage {
         val parentEventFieldDescriptor = messageDescriptor.findFieldByName(PARENT_EVENT_ID_FIELD)
-        return if (parentEventFieldDescriptor != null && !message.hasField(parentEventFieldDescriptor)
-        ) {
+        return if (parentEventFieldDescriptor != null) {
             DynamicMessage.newBuilder(message)
                 .setField(parentEventFieldDescriptor, parentEvent).build()
         } else {
@@ -76,7 +94,8 @@ class GrpcService(
             ?: throw SendProtoMessageException("Unable to determine box: '$boxName' port")
     }
 
-    suspend fun sendMessage(callRequest: MethodCallRequest): MethodCallResponse {
+
+    suspend fun sendMessage(callRequest: MethodCallRequest, parentEvent: EventID): MethodCallResponse {
         var channel: ManagedChannel? = null
         return try {
             channel = ManagedChannelBuilder.forAddress(
@@ -89,7 +108,7 @@ class GrpcService(
             )
             val dynamicMessage =
                 protoSchema.jsonToDynamicMessage(callRequest.message, originMethod.inputType).let {
-                    setParentEvent(it, originMethod.inputType)
+                    setParentEvent(it, originMethod.inputType, parentEvent)
                 }
             val methodDescriptor = generateMethodDescriptor(originMethod, callRequest.fullServiceName.serviceName)
 
@@ -98,8 +117,10 @@ class GrpcService(
             logger.error(e) { }
             throw e
         } catch (e: Exception) {
-            logger.error(e) { }
-            throw SendProtoMessageException("Can not call grpc service: $callRequest. ${e.message}")
+            "Can not call grpc service: $callRequest. ${e.message}".let {
+                logger.error(e) { it }
+                throw SendProtoMessageException(it, e)
+            }
         } finally {
             channel?.shutdown()
         }
@@ -116,11 +137,13 @@ class GrpcService(
         val responseChannel = Channel<MethodCallResponse>(0)
         ClientCalls.asyncUnaryCall(clientCall, requestMessage, object : StreamObserver<DynamicMessage> {
             override fun onNext(value: DynamicMessage?) {
+                value?.allFields?.entries?.firstOrNull { it.key.name.toLowerCase().contains("status") }
                 runBlocking {
                     responseChannel.send(
-                        MethodCallResponse(value?.let {
-                            protoMessageToJson(it)
-                        })
+                        MethodCallResponse(
+                            message = value?.let { message -> protoMessageToJson(message) },
+                            rawMessage = value
+                        )
                     )
                 }
             }
@@ -130,7 +153,11 @@ class GrpcService(
                     responseChannel.send(
                         MethodCallResponse(
                             null,
-                            SendProtoMessageException("Unable to send gRPC message: $requestMessage. ${t?.message ?: ""}")
+                            exception =
+                            SendProtoMessageException(
+                                "Unable to send gRPC message: $requestMessage. ${t?.message ?: ""}",
+                                if (t is Exception) t else null
+                            )
                         )
                     )
                 }
@@ -142,8 +169,9 @@ class GrpcService(
         })
         return try {
             withTimeout(responseTimeout) {
-                responseChannel.receive().also {  message ->
+                responseChannel.receive().also { message ->
                     message.exception?.let { throw it }
+                    message.message?.let { validateMessage(message.rawMessage!!, it) }
                 }
             }
         } catch (e: TimeoutCancellationException) {
@@ -153,7 +181,8 @@ class GrpcService(
                 logger.error(e) { "gRPC cancel channel from dynamic message: '${requestMessage}'. ${e.message}" }
             }
             throw SendProtoMessageException(
-                "gRPC response timed out after $responseTimeout milliseconds. ${e.message}"
+                "gRPC response timed out after $responseTimeout milliseconds. ${e.message}",
+                e
             )
         }
     }

@@ -17,7 +17,12 @@
 package com.exactpro.th2.actuibackend.entities.responces
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.google.protobuf.DynamicMessage
 import java.lang.Exception
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-data class MethodCallResponse(val message: String? = null, val exception: Exception? = null)
+data class MethodCallResponse(
+    val message: String? = null,
+    val rawMessage: DynamicMessage? = null,
+    val exception: Exception? = null
+)

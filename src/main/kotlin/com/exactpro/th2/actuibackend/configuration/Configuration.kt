@@ -15,11 +15,6 @@
  ******************************************************************************/
 
 import com.exactpro.th2.actuibackend.configuration.Variable
-import com.exactpro.th2.common.grpc.EventBatch
-import com.exactpro.th2.common.grpc.MessageBatch
-import com.exactpro.th2.common.grpc.Value
-import com.exactpro.th2.common.schema.factory.CommonFactory
-import com.exactpro.th2.common.schema.message.MessageRouter
 
 
 class CustomConfigurationClass {
@@ -27,8 +22,8 @@ class CustomConfigurationClass {
     var port: Int = 8081
     var responseTimeout: Int = 6000
     var clientCacheTimeout: Int = 60
-    var ioDispatcherThreadPoolSize: Int = 1
-    var schemaXMLLink: String = ""
+    var ioDispatcherThreadPoolSize: Int = 10
+    var schemaDefinitionLink: String = ""
     val protoCompileDirectory: String = "src/main/resources/protobuf"
     val namespace: String = "th2-qa"
     val actTypes: Set<String> = setOf("th2-act")
@@ -37,24 +32,16 @@ class CustomConfigurationClass {
     val protoCacheSize = 100
     val getSchemaRetryCount = 10
     val getSchemaRetryDelay = 1
+    val schemaDescriptorsLink: String = ""
+    val descriptorsCacheExpiry = 10
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaXMLLink='$schemaXMLLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay)"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaDefinitionLink='$schemaDefinitionLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaDescriptorsLink='$schemaDescriptorsLink', descriptorsCacheExpiry=$descriptorsCacheExpiry)"
     }
 }
 
 
-class Configuration(args: Array<String>) {
-
-    private val configurationFactory = CommonFactory.createFromArguments(*args)
-
-    val messageRouterParsedBatch: MessageRouter<MessageBatch>
-        get() = configurationFactory.messageRouterParsedBatch
-
-    val eventRouter: MessageRouter<EventBatch>
-        get() = configurationFactory.eventBatchRouter
-
-    private val customConfiguration = configurationFactory.getCustomConfiguration(CustomConfigurationClass::class.java)
+class Configuration(customConfiguration: CustomConfigurationClass) {
 
     val hostname: Variable = Variable("hostname", customConfiguration.hostname, "localhost")
 
@@ -70,8 +57,12 @@ class Configuration(args: Array<String>) {
         "clientCacheTimeout", customConfiguration.clientCacheTimeout.toString(), "3600"
     )
 
-    val schemaXMLLink: Variable = Variable(
-        "schemaXMLLink", customConfiguration.schemaXMLLink, ""
+    val schemaDefinitionLink: Variable = Variable(
+        "schemaXMLLink", customConfiguration.schemaDefinitionLink, ""
+    )
+
+    val schemaDescriptorsLink: Variable = Variable(
+        "schemaProtoLink", customConfiguration.schemaDescriptorsLink, ""
     )
 
     val protoCompileDirectory: Variable = Variable(
@@ -93,12 +84,16 @@ class Configuration(args: Array<String>) {
 
     val protoCacheExpiry: Variable =
         Variable("protoCacheExpiry", customConfiguration.protoCacheExpiry.toString(), "3600")
+
     val protoCacheSize: Variable =
         Variable("protoCacheSize", customConfiguration.protoCacheSize.toString(), "100")
 
     val getSchemaRetryCount: Variable = Variable("getSchemaRetryCount", customConfiguration.getSchemaRetryCount.toString(), "10")
 
     val getSchemaRetryDelay: Variable = Variable("getSchemaRetryDelay", customConfiguration.getSchemaRetryDelay.toString(), "1")
+
+    val descriptorsCacheExpiry: Variable = Variable("descriptorsCacheExpiry", customConfiguration.descriptorsCacheExpiry.toString(), "10")
+
 }
 
 

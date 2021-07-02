@@ -22,6 +22,10 @@ import com.exactpro.th2.actuibackend.entities.exceptions.ProtoParseException
 import com.exactpro.th2.actuibackend.entities.protobuf.ProtoMethod
 import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.TextNode
 import com.google.protobuf.DescriptorProtos
 import com.google.protobuf.Descriptors
 import com.google.protobuf.DynamicMessage
@@ -31,7 +35,39 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 
-data class JsonSchema(val schemaName: String, val schema: String)
+data class JsonSchema private constructor(val schemaName: String, val schema: JsonNode) {
+    companion object {
+        private const val parentEventIdField = "parentEventId"
+        private const val refValues = "\$ref"
+        private const val definitions = "#/definitions/"
+
+        private fun deleteParentEventId(schema: JsonNode) {
+            schema.findParents(parentEventIdField)?.let { parents ->
+                parents.forEach { node ->
+                    if (node is ObjectNode) {
+                        node.findValue(parentEventIdField)?.let {
+                            if (it is ObjectNode) it.removeAll()
+                        }
+                        node.remove(parentEventIdField)
+                    }
+                }
+            }
+        }
+
+        private fun setDefinitionsPrefix(schema: JsonNode) {
+            schema.findParents(refValues).forEach {
+                if (it is ObjectNode)
+                    it.put(refValues, "${definitions}${it.findValue(refValues).textValue()}")
+            }
+        }
+
+        suspend fun createJsonSchema(schemaName: String, schema: JsonNode): JsonSchema {
+            deleteParentEventId(schema)
+            setDefinitionsPrefix(schema)
+            return JsonSchema(schemaName, schema)
+        }
+    }
+}
 
 data class ProtoSchema(
     val actName: String,
@@ -112,13 +148,15 @@ data class ProtoSchema(
                 jsonParser.merge(jsonMessage, dmBuilder)
                 dmBuilder.build()
             } catch (e: InvalidProtocolBufferException) {
-                logger.error(e) {  }
-                throw JsonToProtoParseException(
-                    "Cannot parse json message to protobuf dynamic message. Incorrect json format. ${e.message}"
-                )
+                "Cannot parse json message to protobuf dynamic message. Incorrect json format. ${e.message}".let {
+                    logger.error(e) { it }
+                    throw JsonToProtoParseException(it, e)
+                }
             } catch (e: Exception) {
-                logger.error(e) {  }
-                throw JsonToProtoParseException("Cannot parse json message to protobuf dynamic message. ${e.message}")
+                "Cannot parse json message to protobuf dynamic message. ${e.message}".let {
+                    logger.error(e) { it }
+                    throw JsonToProtoParseException(it, e)
+                }
             }
         }
     }

@@ -21,6 +21,8 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.schema.SchemaParser
+import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
+import com.fasterxml.jackson.databind.JsonNode
 import kotlinx.coroutines.runBlocking
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
@@ -29,7 +31,11 @@ import org.ehcache.config.builders.ExpiryPolicyBuilder
 import org.ehcache.config.builders.ResourcePoolsBuilder
 import java.time.Duration
 
-class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaParser) {
+class ProtoSchemaCache(
+    private val context: Context,
+    private val serviceProtoLoader: ServiceProtoLoader,
+    private val schemaParser: SchemaParser
+) {
 
     private val protobufParser = ProtobufParser(context)
 
@@ -42,23 +48,19 @@ class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaPar
             ResourcePoolsBuilder.heap(context.configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
+                    .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
         ).build()
     )
 
-    init {
-        runBlocking { getServices() }
-    }
-
-    private suspend fun getDependentSchemaByActName(actName: String): DependentSchemas? {
+    private suspend fun getDependentSchemaByActName(actName: String): DependentSchemas {
         return if (actNameToSchemaPackage.containsKey(actName)) {
             actNameToSchemaPackage.get(actName)
         } else {
-            context.jsonService[actName]?.let {
+            serviceProtoLoader.getServiceProto(actName).let {
                 protobufParser.parseBase64ToJsonTree(it)
-            }?.let {
+            }.let {
                 protobufParser.parseJsonToProtoSchemas(actName, it)
-            }?.let {
+            }.let {
                 actNameToSchemaPackage.put(actName, it)
                 it
             }
@@ -66,15 +68,15 @@ class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaPar
     }
 
     private suspend fun getPackageByActName(actName: String): DependentSchemas {
-        return getDependentSchemaByActName(actName) ?: throw InvalidRequestException("Act: '$actName' not found")
+        return getDependentSchemaByActName(actName)
     }
 
     suspend fun getServices(): List<FullServiceName> {
         return schemaParser.getActs()
-            .mapNotNull { act -> getDependentSchemaByActName(act) }
-            .flatMap { it.getServices() }
+                .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
+                .map { act -> getDependentSchemaByActName(act) }
+                .flatMap { it.getServices() }
     }
-
 
     suspend fun getServicesInAct(actName: String): List<FullServiceName> {
         return getPackageByActName(actName).getServices()
@@ -84,7 +86,7 @@ class ProtoSchemaCache(private val context: Context, val schemaParser: SchemaPar
         return getSchemaByServiceName(name).getServiceInfo(name)
     }
 
-    suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, String> {
+    suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, JsonNode> {
         val schema = getPackageByActName(name.actName).getJsonSchemaByService(name)
         return if (methodName == null) {
             schema

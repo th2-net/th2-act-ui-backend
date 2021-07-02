@@ -17,11 +17,12 @@
 
 package com.exactpro.th2.actuibackend.services.rabbitmq
 
-import Configuration
+import com.exactpro.th2.actuibackend.Context
 import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.services.grpc.createMessageFromRequest
 import com.exactpro.th2.common.event.Event
+import com.exactpro.th2.common.event.Event.Status.FAILED
 import com.exactpro.th2.common.event.Event.Status.PASSED
 import com.exactpro.th2.common.event.Event.start
 import com.exactpro.th2.common.event.IBodyData
@@ -29,15 +30,20 @@ import com.exactpro.th2.common.grpc.EventBatch
 import com.exactpro.th2.common.grpc.EventID
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageBatch
-import com.exactpro.th2.common.value.toValue
+import com.exactpro.th2.common.schema.message.MessageRouter
 import com.fasterxml.jackson.core.JsonProcessingException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import java.io.IOException
 
 
-class RabbitMqService(private val configuration: Configuration) {
+class RabbitMqService(
+    private val context: Context,
+    private val messageRouterParsedBatch: MessageRouter<MessageBatch>,
+    private val eventRouter: MessageRouter<EventBatch>
+) {
 
     companion object {
         val logger = KotlinLogging.logger { }
@@ -46,56 +52,72 @@ class RabbitMqService(private val configuration: Configuration) {
     private val actName = "act-ui messages"
     private val description = "act-ui root event"
 
-    val parentEventId = createAndStoreEvent(actName, null, description, PASSED, "act-ui", null)
+    private val configuration = context.configuration
+
+    val parentEventId = runBlocking {
+        createAndStoreEvent(actName, null, description, PASSED, "act-ui", null)
+    }
 
     private fun sendMessage(message: Message, sessionAlias: String?, parentEventId: EventID) {
         try {
-            configuration.messageRouterParsedBatch.sendAll(
+            messageRouterParsedBatch.sendAll(
                 MessageBatch.newBuilder().addMessages(
                     Message.newBuilder(message).setParentEventId(parentEventId).build()
                 ).build(), sessionAlias
             )
         } catch (e: Exception) {
-            logger.error(e) { }
-            throw InvalidRequestException("Can not send message. Session alias: '$sessionAlias' message: $message")
+            "Can not send message. Session alias: '$sessionAlias' message: $message".let {
+                logger.error(e) { it }
+                throw InvalidRequestException(it, e)
+            }
         }
     }
 
+
     @Throws(JsonProcessingException::class, InvalidRequestException::class)
-    fun createAndStoreEvent(
-        name: String, parentEventId: String?, description: String, status: Event.Status, type: String, data: List<IBodyData>?
+    suspend fun createAndStoreEvent(
+        name: String,
+        parentEventId: String?,
+        description: String,
+        status: Event.Status,
+        type: String,
+        data: List<IBodyData>?
     ): EventID {
-        val event = start()
-            .name(name)
-            .description(description)
-            .type(type)
-            .status(status)
-            .also { event ->
-                data?.let {
-                    for (item in it) {
-                        event.bodyData(item)
+        return withContext(Dispatchers.IO) {
+            val event = start()
+                .name(name)
+                .description(description)
+                .type(type)
+                .status(status)
+                .also { event ->
+                    data?.let {
+                        for (item in it) {
+                            event.bodyData(item)
+                        }
                     }
                 }
-            }
-            .endTimestamp()
+                .endTimestamp()
 
-        val protoEvent = event.toProtoEvent(parentEventId)
-        return try {
-            configuration.eventRouter.send(
-                EventBatch.newBuilder().addEvents(protoEvent).build(), "publish", "event"
-            )
-            protoEvent.id
-        } catch (e: IOException) {
-            logger.error(e) { }
-            throw InvalidRequestException("Can not send event:  '${protoEvent.id.id}'")
+            val protoEvent = event.toProtoEvent(parentEventId)
+            try {
+                eventRouter.send(
+                    EventBatch.newBuilder().addEvents(protoEvent).build(), "publish", "event"
+                )
+                protoEvent.id
+            } catch (e: IOException) {
+                "Can not send event:  '${protoEvent.id.id}'".let {
+                    logger.error(e) { it }
+                    throw InvalidRequestException(it, e)
+                }
+            }
         }
     }
 
     @Throws(IOException::class)
-    suspend fun sendMessage(messageSendRequest: MessageSendRequest, parentEventId: EventID) {
+    suspend fun sendMessage(request: MessageSendRequest, parentEventId: EventID) {
         withContext(Dispatchers.IO) {
-            val message = createMessageFromRequest(messageSendRequest)
-            sendMessage(message, messageSendRequest.session, parentEventId)
+            val message = createMessageFromRequest(request)
+            sendMessage(message, request.session, parentEventId)
         }
     }
 }

@@ -16,4 +16,6 @@
 
 package com.exactpro.th2.actuibackend.entities.exceptions
 
-class JsonToProtoParseException(message: String) : InvalidRequestException(message)
+import java.lang.Exception
+
+class JsonToProtoParseException(message: String, exception: Exception) : InvalidRequestException(message, exception)
