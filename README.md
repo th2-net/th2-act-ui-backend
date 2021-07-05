@@ -1,7 +1,10 @@
-# Message Sender Backend
+# Act-ui backend
 
 # Overview
+This is a backend component for the `act-ui` web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To fucntion properly, conn (or codec) components need to be connected to it.
 
+
+`infra-mgr 1.5.1` is required.
 
 # API
 
