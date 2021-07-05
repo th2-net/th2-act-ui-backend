@@ -114,7 +114,18 @@ Response:
     "eventId": "5814945e-5963-11eb-8810-4bd966db93a9",
     "methodName": "...",
     "fullServiceName": "...",
-    "responseMessage": "{\n  \"status\": {\n    \"status\": \"SUCCESS\",\n    \"message\": \"\"\n  },\n  \"checkpointId\": {\n    \"id\": \"e365e960-7163-11eb-ae4a-85aa72af0f35\",\n    \"sessionAliasToDirectionCheckpoint\": {\n    }\n  }"
+    "responseMessage": {
+        "status": {
+          "status": "SUCCESS",
+          "message": ""
+        },
+        "checkpointId": {
+          "id": "b4bdf6a0-d8e9-11eb-9381-47bd42bf66ee",
+          "sessionAliasToDirectionCheckpoint": {
+                    ...
+          }
+        }
+    }
 }
 eventId - status event id.  
 methodName, fullServiceName - same as request.
