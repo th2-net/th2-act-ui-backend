@@ -1,7 +1,7 @@
 # Act-ui backend
 
 # Overview
-This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To fucntion properly, conn (or codec) components need to be connected to it.
+This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components needs to be connected to it.
 
 
 `infra-mgr 1.5.3` is required.
@@ -380,7 +380,7 @@ spec:
     schemaDefinitionLink: "" # link of schema definition
     protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
     namespace: "th2-namespace" # namespace for sending grpc messages
-    actTypes: ["th2-act"] # the types of services the ACTs method will look for
+    actTypes: ["th2-act"] # the types of services that ACTs method will look for
     schemaCacheExpiry: 86400 # schemaXML cache clearing frequency
 
     protoCacheExpiry: 3600 # compiled proto schema cache clearing frequency
@@ -419,7 +419,7 @@ spec:
 
 ```
 
-### Act mode additianal configuration
+### Act mode additional configuration
 
-Act should have attached gRPC desciptors to be accessible from act-ui. To generate gescriptors add [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to build script and configure CI to attach them to the docker image. You can see an example of the configured act [here](https://github.com/th2-net/th2-act-template-j).\
-Also ensure that deployed act box type (spec -> type in yml file) is presented in act-ui-backend configuration (spec -> actTypes in yml file)
+Act should have attached gRPC descriptors to be accessible from act-ui. To generate descriptors add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to build the script and configure CI to attach them to the docker image. You can see an example of the configured act [here](https://github.com/th2-net/th2-act-template-j).\
+Also ensure that the deployed act box type (spec -> type in yml file) is presented in act-ui-backend configuration (spec -> actTypes in yml file)
