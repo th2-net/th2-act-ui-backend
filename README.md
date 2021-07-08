@@ -1,10 +1,10 @@
 # Act-ui backend
 
 # Overview
-This is a backend component for the `act-ui` web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To fucntion properly, conn (or codec) components need to be connected to it.
+This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components needs to be connected to it.
 
 
-`infra-mgr 1.5.1` is required.
+`infra-mgr 1.5.3` is required.
 
 # API
 
@@ -367,29 +367,29 @@ metadata:
   name: act-ui-backend
 spec:
   image-name: ghcr.io/th2-net/th2-act-ui-backend
-  image-version: 0.3.0 // change this line if you want to use a newer version
+  image-version: 0.3.0 # change this line if you want to use a newer version
   type: th2-rpt-data-provider
   custom-config:
     hostname: "localhost"
     port: 8080
-    responseTimeout: 6000 // maximum request processing time in milliseconds
+    responseTimeout: 6000 # maximum request processing time in milliseconds
 
-    clientCacheTimeout: 60 // cached event lifetime in milliseconds
-    ioDispatcherThreadPoolSize: 10 // thread pool size for blocking database calls
+    clientCacheTimeout: 60 # cached event lifetime in milliseconds
+    ioDispatcherThreadPoolSize: 10 # thread pool size for blocking database calls
         
-    schemaDefinitionLink: "" // link of schema definition
-    protoCompileDirectory: "src/main/resources/protobuf" // directory for compiling proto files
-    namespace: "th2-qa" // namespace for sending grpc messages
-    actTypes: ["th2-act"] // the types of services the *acts* method will look for
-    schemaCacheExpiry: 86400 // schemaXML cache clearing frequency
+    schemaDefinitionLink: "" # link of schema definition
+    protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
+    namespace: "th2-namespace" # namespace for sending grpc messages
+    actTypes: ["th2-act"] # the types of services that ACTs method will look for
+    schemaCacheExpiry: 86400 # schemaXML cache clearing frequency
 
-    protoCacheExpiry: 3600 // compiled proto schema cache clearing frequency
-    protoCacheSize: 100 // compiled proto schema cache size
-    getSchemaRetryCount: 10 // number of retries when requesting an xml schema
-    getSchemaRetryDelay: 1 // delay between attempts to load xml schema
-    schemaDescriptorsLink: "" // link to the api to get the base64 proto schema descriptors for the service
-    descriptorsCacheExpiry: 10 // service descriptors cache clearing frequency
-  pins: // pins are used to communicate with codec components to parse message data
+    protoCacheExpiry: 3600 # compiled proto schema cache clearing frequency
+    protoCacheSize: 100 # compiled proto schema cache size
+    getSchemaRetryCount: 10 # number of retries when requesting an xml schema
+    getSchemaRetryDelay: 1 # delay between attempts to load xml schema
+    schemaDescriptorsLink: "" # link to the api to get the base64 proto schema descriptors for the service
+    descriptorsCacheExpiry: 10 # service descriptors cache clearing frequency
+  pins: # pins are used to communicate with codec components to parse message data
     - name: to_codec
       connection-type: mq
       attributes:
@@ -418,3 +418,8 @@ spec:
         cpu: 50m
 
 ```
+
+### Act mode additional configuration
+
+Act should have attached gRPC descriptors to be accessible from act-ui. To generate descriptors add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to build the script and configure CI to attach them to the docker image. You can see an example of the configured act [here](https://github.com/th2-net/th2-act-template-j).\
+Also ensure that the deployed act box type (spec -> type in yml file) is presented in act-ui-backend configuration (spec -> actTypes in yml file)
