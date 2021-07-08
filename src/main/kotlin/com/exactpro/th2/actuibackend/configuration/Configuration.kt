@@ -58,11 +58,11 @@ class Configuration(customConfiguration: CustomConfigurationClass) {
     )
 
     val schemaDefinitionLink: Variable = Variable(
-        "schemaXMLLink", customConfiguration.schemaDefinitionLink, ""
+        "schemaDefinitionLink", customConfiguration.schemaDefinitionLink, ""
     )
 
     val schemaDescriptorsLink: Variable = Variable(
-        "schemaProtoLink", customConfiguration.schemaDescriptorsLink, ""
+        "schemaDescriptorsLink", customConfiguration.schemaDescriptorsLink, ""
     )
 
     val protoCompileDirectory: Variable = Variable(
