@@ -197,8 +197,9 @@ class Main {
                 get("/{dictionary}/{message}") {
                     val message = call.parameters["message"]
                     val dictionary = call.parameters["dictionary"]
+                    val isFull = call.request.queryParameters.toMap()["full"]?.first()?.toBoolean() ?: false
                     handleRequest(call, "dictionary message", cacheControl, message, dictionary) {
-                        schemaParser.getDictionarySchema(dictionary!!).entries.first { it.key == message }
+                        schemaParser.getDictionarySchema(dictionary!!, isFull).entries.first { it.key == message }
                     }
                 }
 
