@@ -380,7 +380,7 @@ spec:
     schemaDefinitionLink: "" # link of schema definition
     protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
     namespace: "th2-namespace" # namespace for sending grpc messages
-    actTypes: ["th2-act"] # the types of services the *acts* method will look for
+    actTypes: ["th2-act"] # the types of services the ACTs method will look for
     schemaCacheExpiry: 86400 # schemaXML cache clearing frequency
 
     protoCacheExpiry: 3600 # compiled proto schema cache clearing frequency
@@ -418,3 +418,8 @@ spec:
         cpu: 50m
 
 ```
+
+### Act mode additianal configuration
+
+Act should have attached gRPC desciptors to be accessible from act-ui. To generate gescriptors add [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to build script and configure CI to attach them to the docker image. You can see an example of the configured act [here](https://github.com/th2-net/th2-act-template-j).\
+Also ensure that deployed act box type (spec -> type in yml file) is presented in act-ui-backend configuration (spec -> actTypes in yml file)
