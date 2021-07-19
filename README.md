@@ -1,7 +1,7 @@
 # Act-ui backend
 
 # Overview
-This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components needs to be connected to it.
+This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components need to be connected to it.
 
 
 `infra-mgr 1.5.3` is required.
@@ -421,5 +421,6 @@ spec:
 
 ### Act mode additional configuration
 
-Act should have attached gRPC descriptors to be accessible from act-ui. To generate descriptors add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to build the script and configure CI to attach them to the docker image. You can see an example of the configured act [here](https://github.com/th2-net/th2-act-template-j).\
-Also ensure that the deployed act box type (spec -> type in yml file) is presented in act-ui-backend configuration (spec -> actTypes in yml file)
+To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as a docker label. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
+
+Make sure that target act component's box type `spec: type: th2-act` matches one of the types specified in act-ui-backend config `spec: custom-config: actTypes: ["th2-act"]`
