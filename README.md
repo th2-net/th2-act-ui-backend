@@ -421,6 +421,6 @@ spec:
 
 ### Act mode additional configuration
 
-To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as a docker label. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
+To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as docker labels. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
 
 Make sure that target act component's box type `spec: type: th2-act` matches one of the types specified in act-ui-backend config `spec: custom-config: actTypes: ["th2-act"]`
