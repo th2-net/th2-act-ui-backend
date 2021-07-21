@@ -378,6 +378,7 @@ spec:
     ioDispatcherThreadPoolSize: 10 # thread pool size for blocking database calls
         
     schemaDefinitionLink: "" # link of schema definition
+    schemaDescriptorsLink: "" # link to the api to get the base64 proto schema descriptors for the service
     protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
     namespace: "th2-namespace" # namespace for sending grpc messages
     actTypes: ["th2-act"] # the types of services that ACTs method will look for
@@ -387,21 +388,16 @@ spec:
     protoCacheSize: 100 # compiled proto schema cache size
     getSchemaRetryCount: 10 # number of retries when requesting an xml schema
     getSchemaRetryDelay: 1 # delay between attempts to load xml schema
-    schemaDescriptorsLink: "" # link to the api to get the base64 proto schema descriptors for the service
     descriptorsCacheExpiry: 10 # service descriptors cache clearing frequency
   pins: # pins are used to communicate with codec components to parse message data
     - name: to_codec
       connection-type: mq
       attributes:
-        - to_codec
-        - raw
-        - publish
-    - name: from_codec
-      connection-type: mq
-      attributes:
-        - from_codec
+        # enter the target session name here
+        - demo-conn1 # example of session name, configure it accourding your boxes
+        - to_conn
         - parsed
-        - subscribe
+        - publish
   extended-settings:
     service:
       enabled: false
@@ -419,7 +415,36 @@ spec:
 
 ```
 
-### Act mode additional configuration
+### Schema links
+
+Configuration is listed above and there are present 2 options: `schemaDefinitionLink` and `schemaDescriptorsLink`. `schemaDefinitionLink` allows to act-ui-backed extract from infra-manager dictionaries and information about act components. `schemaDescriptorsLink` points to the infra-manager to get grpc service descriptiors.
+Them serve to perform validation on act-ui-backed side. 
+
+Links should refer to:
+1. `schemaDefinitionLink` -> `http://infra-mgr.service.svc.cluster.local:8080/schema/<namespace>`
+2. `schemaDescriptorsLink` -> `http://infra-mgr.service.svc.cluster.local:8080/descriptor/<namespace>`
+
+Where `<namespace>` is current namespace where act-ui-backend, dictionaries and acts are deployed. Addresses are local and can be accessible only from k8s.
+
+### Adding new session
+
+To add your own session you have to add correspoing **pin** to the codec in `pins` section.
+There is an example:
+```
+  pins:
+    - name: to_codec
+      connection-type: mq
+      attributes:
+        # enter the target session name here
+        - demo-conn1
+        - to_conn
+        - parsed
+        - publish
+```
+
+According this example connectivity box has name `demo-conn1` and there is configured link from act-ui-backend (pin name `demo-conn1`) to corresponding codec.
+
+### Act mode additianal configuration
 
 To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as docker labels. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
 
