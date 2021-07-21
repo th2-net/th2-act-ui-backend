@@ -377,8 +377,8 @@ spec:
     clientCacheTimeout: 60 # cached event lifetime in milliseconds
     ioDispatcherThreadPoolSize: 10 # thread pool size for blocking database calls
         
-    schemaDefinitionLink: "" # link of schema definition
-    schemaDescriptorsLink: "" # link to the api to get the base64 proto schema descriptors for the service
+    schemaDefinitionLink: "http://infra-mgr.service.svc.cluster.local:8080/schema/<namespace>" # link of schema definition. Replace namespace
+    schemaDescriptorsLink: "http://infra-mgr.service.svc.cluster.local:8080/descriptor/<namespace>" # link to the api to get the base64 proto schema descriptors for the service. Replace namespace
     protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
     namespace: "th2-namespace" # namespace for sending grpc messages
     actTypes: ["th2-act"] # the types of services that ACTs method will look for
@@ -395,7 +395,6 @@ spec:
       attributes:
         # enter the target session name here
         - demo-conn1 # example of session name, configure it accourding your boxes
-        - to_conn
         - parsed
         - publish
   extended-settings:
@@ -437,7 +436,6 @@ There is an example:
       attributes:
         # enter the target session name here
         - demo-conn1
-        - to_conn
         - parsed
         - publish
 ```
