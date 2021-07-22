@@ -3,8 +3,17 @@
 # Overview
 This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components need to be connected to it.
 
+***Requirements:***
 
-`infra-mgr 1.5.3` is required.
+`th2-infra 1.5.2+` (1.5.3 if referred act component is built in github)
+
+`th2-rpt-viewer 3.1.39+`
+
+`th2-rpt-data-provider 5.1+`
+
+`th2-conn components with common library v3 support` (there are several environments running on v3 common library)
+
+`th2-act components with grpc service descriptions` (act with installed gradle plugin and configured CI workflows to publication service descriptions)
 
 # API
 
