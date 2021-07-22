@@ -34,9 +34,10 @@ class CustomConfigurationClass {
     val getSchemaRetryDelay = 1
     val schemaDescriptorsLink: String = ""
     val descriptorsCacheExpiry = 10
+    val sessions = emptySet<String>()
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaDefinitionLink='$schemaDefinitionLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaDescriptorsLink='$schemaDescriptorsLink', descriptorsCacheExpiry=$descriptorsCacheExpiry)"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaDefinitionLink='$schemaDefinitionLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaDescriptorsLink='$schemaDescriptorsLink', descriptorsCacheExpiry=$descriptorsCacheExpiry, sessions=$sessions)"
     }
 }
 
@@ -88,13 +89,20 @@ class Configuration(customConfiguration: CustomConfigurationClass) {
     val protoCacheSize: Variable =
         Variable("protoCacheSize", customConfiguration.protoCacheSize.toString(), "100")
 
-    val getSchemaRetryCount: Variable = Variable("getSchemaRetryCount", customConfiguration.getSchemaRetryCount.toString(), "10")
+    val getSchemaRetryCount: Variable =
+        Variable("getSchemaRetryCount", customConfiguration.getSchemaRetryCount.toString(), "10")
 
-    val getSchemaRetryDelay: Variable = Variable("getSchemaRetryDelay", customConfiguration.getSchemaRetryDelay.toString(), "1")
+    val getSchemaRetryDelay: Variable =
+        Variable("getSchemaRetryDelay", customConfiguration.getSchemaRetryDelay.toString(), "1")
 
-    val descriptorsCacheExpiry: Variable = Variable("descriptorsCacheExpiry", customConfiguration.descriptorsCacheExpiry.toString(), "10")
+    val descriptorsCacheExpiry: Variable =
+        Variable("descriptorsCacheExpiry", customConfiguration.descriptorsCacheExpiry.toString(), "10")
 
+    val sessions: Set<String> = customConfiguration.sessions.also {
+        Variable("sessions", customConfiguration.sessions.toString(), emptySet<String>().toString())
+    }
 }
+
 
 
 
