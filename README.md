@@ -470,9 +470,10 @@ To call act components from act-ui, gRPC descriptors need to be generated and at
 Make sure that target act component's box type `spec: type: th2-act` matches one of the types specified in act-ui-backend config `spec: custom-config: actTypes: ["th2-act"]`
 
 
-##Release notes
+## Release notes
 
-###0.3.1
-####Changed:
+### 0.3.1
+
+#### Changed:
 
 + Session aliases are no longer fetched from schema and must be configured in `sessions`.
