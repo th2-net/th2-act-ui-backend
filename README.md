@@ -3,8 +3,17 @@
 # Overview
 This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components need to be connected to it.
 
+***Requirements:***
 
-`infra-mgr 1.5.3` is required.
+`th2-infra 1.5.2+` (1.5.3 is required if a target act compoenent is published on ghcr.io)
+
+`th2-rpt-viewer 3.1.39+`
+
+`th2-rpt-data-provider 5.1+`
+
+`th2-conn` components with common library v3 support
+
+`th2-act` components with grpc service descriptions (see [below](https://github.com/th2-net/th2-act-ui-backend#act-mode-additianal-configuration))
 
 # API
 
@@ -117,7 +126,18 @@ Response:
     "eventId": "5814945e-5963-11eb-8810-4bd966db93a9",
     "methodName": "...",
     "fullServiceName": "...",
-    "responseMessage": "{\n  \"status\": {\n    \"status\": \"SUCCESS\",\n    \"message\": \"\"\n  },\n  \"checkpointId\": {\n    \"id\": \"e365e960-7163-11eb-ae4a-85aa72af0f35\",\n    \"sessionAliasToDirectionCheckpoint\": {\n    }\n  }"
+    "responseMessage": {
+      "status": {
+        "status": "SUCCESS",
+        "message": ""
+      },
+      "checkpointId": {
+        "id": "b4bdf6a0-d8e9-11eb-9381-47bd42bf66ee",
+        "sessionAliasToDirectionCheckpoint": {
+                  ...
+        }
+     }
+  }
 }
 eventId - status event id.  
 methodName, fullServiceName - same as request.
