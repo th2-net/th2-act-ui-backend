@@ -377,8 +377,8 @@ spec:
     clientCacheTimeout: 60 # cached event lifetime in milliseconds
     ioDispatcherThreadPoolSize: 10 # thread pool size for blocking database calls
         
-    schemaDefinitionLink: "http://infra-mgr.service.svc.cluster.local:8080/schema/<namespace>" # link of schema definition. Replace namespace
-    schemaDescriptorsLink: "http://infra-mgr.service.svc.cluster.local:8080/descriptor/<namespace>" # link to the api to get the base64 proto schema descriptors for the service. Replace namespace
+    schemaDefinitionLink: "http://infra-mgr.service.svc.cluster.local:8080/schema/<namespace>" # link to schema definition
+    schemaDescriptorsLink: "http://infra-mgr.service.svc.cluster.local:8080/descriptor/<namespace>" # link to the api to get the proto service descriptors from
     protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
     namespace: "th2-namespace" # namespace for sending grpc messages
     actTypes: ["th2-act"] # the types of services that ACTs method will look for
@@ -394,7 +394,7 @@ spec:
       connection-type: mq
       attributes:
         # enter the target session name here
-        - demo-conn1 # example of session name, configure it accourding your boxes
+        - demo-conn1 # example of a session name, should be the same as what target conn components are configured to use
         - parsed
         - publish
   extended-settings:
@@ -416,19 +416,21 @@ spec:
 
 ### Schema links
 
-Configuration is listed above and there are present 2 options: `schemaDefinitionLink` and `schemaDescriptorsLink`. `schemaDefinitionLink` allows to act-ui-backed extract from infra-manager dictionaries and information about act components. `schemaDescriptorsLink` points to the infra-manager to get grpc service descriptiors.
-Them serve to perform validation on act-ui-backed side. 
+`schemaDefinitionLink` ponts to an api to extract th2 box descriptions and message dictionaries from. 
+`schemaDescriptorsLink` points to an api that allows to extract grpc service descriptors. This is required to call th2-act grpc methods.
 
-Links should refer to:
+Links should follow this pattern:
 1. `schemaDefinitionLink` -> `http://infra-mgr.service.svc.cluster.local:8080/schema/<namespace>`
 2. `schemaDescriptorsLink` -> `http://infra-mgr.service.svc.cluster.local:8080/descriptor/<namespace>`
 
-Where `<namespace>` is current namespace where act-ui-backend, dictionaries and acts are deployed. Addresses are local and can be accessible only from k8s.
+`<namespace>` is the namespace where act-ui-backend and other th2 boxes it talks to are deployed. These links should use internal k8s domain names.
 
 ### Adding new session
 
-To add your own session you have to add correspoing **pin** to the codec in `pins` section.
-There is an example:
+To add your own session you have to add a new act-ui-backend **pin** and link it to the corresponding codec. The codec should also be linked to the conn component to successfully send a message.
+
+
+Pin configuration expmple:
 ```
   pins:
     - name: to_codec
@@ -439,8 +441,6 @@ There is an example:
         - parsed
         - publish
 ```
-
-According this example connectivity box has name `demo-conn1` and there is configured link from act-ui-backend (pin name `demo-conn1`) to corresponding codec.
 
 ### Act mode additianal configuration
 
