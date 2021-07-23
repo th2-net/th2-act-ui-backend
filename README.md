@@ -409,7 +409,7 @@ spec:
     getSchemaRetryCount: 10 # number of retries when requesting an xml schema
     getSchemaRetryDelay: 1 # delay between attempts to load xml schema
     descriptorsCacheExpiry: 10 # service descriptors cache clearing frequency
-    sessions: [] # names of session aliases used for routing messages    
+    sessions: [] # list of sessions to send parsed messages to - each of the sessions should have a matching pin defined for it
   pins: # pins are used to communicate with codec components to parse message data
     - name: to_codec
       connection-type: mq
