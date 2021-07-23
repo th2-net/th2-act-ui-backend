@@ -28,10 +28,7 @@ import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
 import com.exactpro.th2.actuibackend.services.MessageSendService
 import com.exactpro.th2.actuibackend.services.grpc.GrpcService
 import com.exactpro.th2.actuibackend.services.rabbitmq.RabbitMqService
-import com.exactpro.th2.common.event.Event
-import com.exactpro.th2.common.event.IBodyData
 import com.exactpro.th2.common.grpc.EventBatch
-import com.exactpro.th2.common.grpc.EventID
 import com.exactpro.th2.common.grpc.MessageBatch
 import com.exactpro.th2.common.metrics.liveness
 import com.exactpro.th2.common.metrics.readiness
@@ -67,7 +64,7 @@ class Main {
     private val configurationFactory: CommonFactory
     private val messageRouterParsedBatch: MessageRouter<MessageBatch>
     private val eventRouter: MessageRouter<EventBatch>
-    private val context: Context
+    private val applicationContext: Context
     private val serviceProtoLoader: ServiceProtoLoader
     private val schemaParser: SchemaParser
     private val protoSchemaCache: ProtoSchemaCache
@@ -95,18 +92,18 @@ class Main {
         eventRouter = configurationFactory.eventBatchRouter
         resources += eventRouter
 
-        context = Context(configurationFactory.getCustomConfiguration(CustomConfigurationClass::class.java))
+        applicationContext = Context(configurationFactory.getCustomConfiguration(CustomConfigurationClass::class.java))
 
-        serviceProtoLoader = ServiceProtoLoader(context)
-        schemaParser = SchemaParser(context)
-        protoSchemaCache = ProtoSchemaCache(context, serviceProtoLoader, schemaParser)
+        serviceProtoLoader = ServiceProtoLoader(applicationContext)
+        schemaParser = SchemaParser(applicationContext)
+        protoSchemaCache = ProtoSchemaCache(applicationContext, serviceProtoLoader, schemaParser)
         messageValidator = MessageValidator(schemaParser)
 
-        rabbitMqService = RabbitMqService(context, messageRouterParsedBatch, eventRouter)
-        actGrpcService = GrpcService(context, protoSchemaCache, schemaParser)
-        messageService = MessageSendService(rabbitMqService, actGrpcService, context)
-        cacheControl = context.cacheControl
-        jacksonMapper = context.jacksonMapper
+        rabbitMqService = RabbitMqService(applicationContext, messageRouterParsedBatch, eventRouter)
+        actGrpcService = GrpcService(applicationContext, protoSchemaCache, schemaParser)
+        messageService = MessageSendService(rabbitMqService, actGrpcService, applicationContext)
+        cacheControl = applicationContext.cacheControl
+        jacksonMapper = applicationContext.jacksonMapper
     }
 
     @InternalAPI
@@ -133,7 +130,7 @@ class Main {
                 try {
                     try {
                         launch {
-                            withTimeout(context.timeout) {
+                            withTimeout(applicationContext.timeout) {
                                 cacheControl?.let { call.response.cacheControl(it) }
                                 call.respondText(
                                     jacksonMapper.asStringSuspend(calledFun.invoke()),
@@ -175,9 +172,9 @@ class Main {
     @InternalAPI
     private fun startServer() {
 
-        System.setProperty(IO_PARALLELISM_PROPERTY_NAME, context.configuration.ioDispatcherThreadPoolSize.value)
+        System.setProperty(IO_PARALLELISM_PROPERTY_NAME, applicationContext.configuration.ioDispatcherThreadPoolSize.value)
 
-        embeddedServer(Netty, context.configuration.port.value.toInt()) {
+        embeddedServer(Netty, applicationContext.configuration.port.value.toInt()) {
 
             install(Compression)
             install(ContentNegotiation) {
@@ -211,7 +208,7 @@ class Main {
 
                 get("/sessions") {
                     handleRequest(call, "sessions", cacheControl) {
-                        schemaParser.getSessions()
+                        applicationContext.configuration.sessions
                     }
                 }
 
@@ -278,7 +275,7 @@ class Main {
             }
         }.start(false)
 
-        logger.info { "serving on: http://${context.configuration.hostname.value}:${context.configuration.port.value}" }
+        logger.info { "serving on: http://${applicationContext.configuration.hostname.value}:${applicationContext.configuration.port.value}" }
     }
 
     private fun configureShutdownHook(resources: Deque<AutoCloseable>, lock: ReentrantLock, condition: Condition) {

@@ -26,7 +26,7 @@ This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-
 
 `http://localhost:8080/{dictionary}/{message}` - returns a single message template with the specified dictionary name and message name
 
-`http://localhost:8080/sessions` - returns a list of sessionAlias from boxes with th2-conn type in current schema
+`http://localhost:8080/sessions` - returns a list of sessionAlias specified in the configuration
 
 `http://localhost:8080/acts` - returns a list of boxes names from boxes with th2-act type in current schema
 
@@ -409,6 +409,7 @@ spec:
     getSchemaRetryCount: 10 # number of retries when requesting an xml schema
     getSchemaRetryDelay: 1 # delay between attempts to load xml schema
     descriptorsCacheExpiry: 10 # service descriptors cache clearing frequency
+    sessions: [] # list of sessions to send parsed messages to - each of the sessions should have a matching pin defined for it
   pins: # pins are used to communicate with codec components to parse message data
     - name: to_codec
       connection-type: mq
@@ -467,3 +468,12 @@ Pin configuration expmple:
 To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as docker labels. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
 
 Make sure that target act component's box type `spec: type: th2-act` matches one of the types specified in act-ui-backend config `spec: custom-config: actTypes: ["th2-act"]`
+
+
+## Release notes
+
+### 0.3.1
+
+#### Changed:
+
++ Session aliases are no longer fetched from schema and must be configured in `sessions`.

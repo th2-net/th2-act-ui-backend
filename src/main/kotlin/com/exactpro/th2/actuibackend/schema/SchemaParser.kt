@@ -221,12 +221,6 @@ class SchemaParser(private val context: Context) {
             )
     }
 
-    suspend fun getSessions(): List<String> {
-        val configs = getConfigsByType(TH2_CONN)
-        return configs.mapNotNull {
-            it.get("spec")?.get("custom-config")?.get("session-alias")?.textValue()
-        }
-    }
 
     suspend fun getActs(): List<String> {
         val configs = getConfigsByType(TH2_ACT)
