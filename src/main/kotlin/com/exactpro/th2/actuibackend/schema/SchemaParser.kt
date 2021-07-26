@@ -155,21 +155,22 @@ class SchemaParser(private val context: Context) {
         }
     }
 
-    private fun convertXmlDictToPattern(xmlDictionary: IDictionaryStructure): Map<String, DataMap> {
+    private fun convertXmlDictToPattern(xmlDictionary: IDictionaryStructure, isFull: Boolean): Map<String, DataMap> {
         val rootElements = xmlDictionary.messages.map { it.key }.toMutableSet()
         return xmlDictionary.messages.entries.associate { mess ->
-            mess.key to createDataMap(mess.value, rootElements, SCHEMA_NAME)
+            mess.key to createDataMap(mess.value, rootElements, SCHEMA_NAME, isFull)
         }.filter { rootElements.contains(it.key) }
     }
 
     private fun createDataMap(
         xmlField: IFieldStructure,
         rootElements: MutableSet<String>,
-        schemaName: String? = null
+        schemaName: String? = null,
+        isFull: Boolean = false
     ): DataMap {
         return xmlField.fields.entries.let { entries ->
             val properties = entries.associate {
-                it.key to recursiveTraversal(it.value, rootElements)
+                it.key to recursiveTraversal(it.value, rootElements, isFull)
             }
             val required = entries.filter { it.value.isRequired }.map { it.key }
             DataMap(required, properties, schemaName)
@@ -185,22 +186,32 @@ class SchemaParser(private val context: Context) {
     }
 
     private fun recursiveTraversal(
-        xmlField: IFieldStructure, rootElements: MutableSet<String>
+        xmlField: IFieldStructure, rootElements: MutableSet<String>, isFull: Boolean
     ): DataObject {
 
         return if (xmlField is MessageStructure) {
             rootElements.remove(xmlField.name)
 
-            val dataMap = createDataMap(xmlField, rootElements)
+            val dataMap = createDataMap(xmlField, rootElements, null, isFull)
 
-            if (xmlField.isCollection)
+            val result = if (xmlField.isCollection)
                 Array(dataMap)
             else
                 dataMap
 
+            if (isFull) {
+                DataMap(
+                    emptyList(),
+                    mapOf("messageValue" to DataMap(emptyList(), mapOf("fields" to result)))
+                )
+            } else {
+                result
+            }
+
         } else {
+
             val type = renameType(xmlField.javaType)
-            if (xmlField.values.isNotEmpty()) {
+            val value: DataObject = if (xmlField.values.isNotEmpty()) {
                 Enumerate(type, xmlField.values.values.associate { it.name to it.getCastValue<Any>() })
             } else {
                 Simple(
@@ -208,6 +219,12 @@ class SchemaParser(private val context: Context) {
                     xmlField.getDefaultValue<Any>(),
                     getFormat(xmlField.javaType)
                 )
+            }
+
+            if (isFull) {
+                DataMap(emptyList(), mapOf("simpleValue" to value))
+            } else {
+                value
             }
         }
     }
@@ -249,9 +266,9 @@ class SchemaParser(private val context: Context) {
         return getDictionaryFromJsonTree(getJsonTree()).map { it.get("name").textValue() }
     }
 
-    suspend fun getDictionarySchema(dictionaryName: String): Map<String, DataMap> {
+    suspend fun getDictionarySchema(dictionaryName: String, isFull: Boolean = false): Map<String, DataMap> {
         return withContext(Dispatchers.IO) {
-            convertXmlDictToPattern(getXmlDictionary(dictionaryName))
+            convertXmlDictToPattern(getXmlDictionary(dictionaryName), isFull)
         }
     }
 }
