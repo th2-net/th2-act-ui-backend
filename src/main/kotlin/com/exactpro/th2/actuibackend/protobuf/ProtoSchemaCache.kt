@@ -22,7 +22,10 @@ import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
+import com.exactpro.th2.common.value.nullValue
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import com.fasterxml.jackson.databind.node.ObjectNode
 import kotlinx.coroutines.runBlocking
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
@@ -48,7 +51,7 @@ class ProtoSchemaCache(
             ResourcePoolsBuilder.heap(context.configuration.protoCacheSize.value.toLong())
         ).withExpiry(
             ExpiryPolicyBuilder
-                    .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
+                .timeToLiveExpiration(Duration.ofSeconds(context.configuration.protoCacheExpiry.value.toLong()))
         ).build()
     )
 
@@ -73,9 +76,9 @@ class ProtoSchemaCache(
 
     suspend fun getServices(): List<FullServiceName> {
         return schemaParser.getActs()
-                .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
-                .map { act -> getDependentSchemaByActName(act) }
-                .flatMap { it.getServices() }
+            .filter { serviceProtoLoader.isServiceHasDescriptor(it) }
+            .map { act -> getDependentSchemaByActName(act) }
+            .flatMap { it.getServices() }
     }
 
     suspend fun getServicesInAct(actName: String): List<FullServiceName> {
@@ -93,7 +96,11 @@ class ProtoSchemaCache(
         } else {
             val protoMethod = getServiceDescription(name).methods.firstOrNull { it.methodName == methodName }
                 ?: throw InvalidRequestException("Unknown method name: '$methodName'")
-            listOf(protoMethod.inputType, protoMethod.outputType).associateWith { schema[it]!! }
+            val map = mutableMapOf<String, JsonNode>()
+            listOf(protoMethod.inputType, protoMethod.outputType).forEach {
+                if (schema.containsKey(it)) map[it] = schema[it]!!
+            }
+            map
         }
     }
 
