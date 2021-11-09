@@ -249,6 +249,26 @@ class SchemaParser(private val context: Context) {
         return getDictionaryFromJsonTree(getJsonTree()).map { it.get("name").textValue() }
     }
 
+    suspend fun getDictionariesBySessions(session: String): List<*> {
+        val boxes = getJsonTree().get("resources").elements().asSequence().filter {
+            it?.get("spec")?.get("custom-config")?.get("session-alias")?.textValue() == session
+        }
+            .mapNotNull { it?.get("name")?.textValue() }
+            .toList()
+
+        return getJsonTree().get("resources").elements().asSequence().filter {
+            it?.get("kind")?.textValue() == "Th2Link"
+        }
+            .mapNotNull { it?.get("spec")?.get("dictionaries-relation") }
+            .flatMap { it.elements().asSequence() }
+            .map {
+                Pair(it?.get("box")?.textValue(), it?.get("dictionary")?.get("name")?.textValue())
+            }
+            .filter { boxes.contains(it.first) }
+            .mapNotNull { it.second }
+            .toList()
+    }
+
     suspend fun getDictionarySchema(dictionaryName: String): Map<String, DataMap> {
         return withContext(Dispatchers.IO) {
             convertXmlDictToPattern(getXmlDictionary(dictionaryName))
