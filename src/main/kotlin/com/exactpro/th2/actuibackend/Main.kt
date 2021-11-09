@@ -269,6 +269,7 @@ class Main {
                     val byMethod = call.request.queryParameters["method"]
                     handleRequest(call, "json_schema", cacheControl, serviceName) {
                         val fullName = FullServiceName(serviceName!!)
+                        logger.debug { fullName }
                         protoSchemaCache.getJsonSchemaByServiceName(fullName, byMethod)
                     }
                 }

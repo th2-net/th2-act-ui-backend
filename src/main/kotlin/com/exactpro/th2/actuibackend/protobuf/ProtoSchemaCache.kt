@@ -22,17 +22,17 @@ import com.exactpro.th2.actuibackend.entities.protobuf.ProtoService
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.actuibackend.schema.ServiceProtoLoader
-import com.exactpro.th2.common.value.nullValue
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.JsonNodeFactory
-import com.fasterxml.jackson.databind.node.ObjectNode
-import kotlinx.coroutines.runBlocking
+import mu.KotlinLogging
 import org.ehcache.Cache
 import org.ehcache.config.builders.CacheConfigurationBuilder
 import org.ehcache.config.builders.CacheManagerBuilder
 import org.ehcache.config.builders.ExpiryPolicyBuilder
 import org.ehcache.config.builders.ResourcePoolsBuilder
 import java.time.Duration
+import kotlin.math.log
+
+private val logger = KotlinLogging.logger {}
 
 class ProtoSchemaCache(
     private val context: Context,
@@ -57,7 +57,10 @@ class ProtoSchemaCache(
 
     private suspend fun getDependentSchemaByActName(actName: String): DependentSchemas {
         return if (actNameToSchemaPackage.containsKey(actName)) {
-            actNameToSchemaPackage.get(actName)
+            val dependentSchemas = actNameToSchemaPackage.get(actName)
+            logger.debug { "services" }
+            logger.debug { dependentSchemas.getServices() }
+            dependentSchemas
         } else {
             serviceProtoLoader.getServiceProto(actName).let {
                 protobufParser.parseBase64ToJsonTree(it)
@@ -65,6 +68,8 @@ class ProtoSchemaCache(
                 protobufParser.parseJsonToProtoSchemas(actName, it)
             }.let {
                 actNameToSchemaPackage.put(actName, it)
+                logger.debug { "services" }
+                logger.debug { it.getServices() }
                 it
             }
         }
@@ -91,15 +96,20 @@ class ProtoSchemaCache(
 
     suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, JsonNode> {
         val schema = getPackageByActName(name.actName).getJsonSchemaByService(name)
+        logger.debug { "schema" }
+        logger.debug { schema }
         return if (methodName == null) {
             schema
         } else {
             val protoMethod = getServiceDescription(name).methods.firstOrNull { it.methodName == methodName }
                 ?: throw InvalidRequestException("Unknown method name: '$methodName'")
+            logger.debug { protoMethod }
             val map = mutableMapOf<String, JsonNode>()
             listOf(protoMethod.inputType, protoMethod.outputType).forEach {
                 if (schema.containsKey(it)) map[it] = schema[it]!!
             }
+            logger.debug { "response" }
+            logger.debug { map }
             map
         }
     }
