@@ -61,12 +61,14 @@ class ServiceProtoLoader(private val context: Context) {
     private val serviceType = "Th2Box"
 
     private fun createUrl(serviceName: String): String {
-        return String.format(
+        val url =  String.format(
             "%s/%s/%s",
             context.configuration.schemaDescriptorsLink.value,
             serviceType,
             serviceName
         )
+        logger.debug { "url descriptor $url" }
+        return url
     }
 
     @KtorExperimentalAPI

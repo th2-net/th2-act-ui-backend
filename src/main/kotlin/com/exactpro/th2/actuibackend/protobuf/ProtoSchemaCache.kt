@@ -30,7 +30,6 @@ import org.ehcache.config.builders.CacheManagerBuilder
 import org.ehcache.config.builders.ExpiryPolicyBuilder
 import org.ehcache.config.builders.ResourcePoolsBuilder
 import java.time.Duration
-import kotlin.math.log
 
 private val logger = KotlinLogging.logger {}
 
@@ -62,9 +61,12 @@ class ProtoSchemaCache(
             logger.debug { dependentSchemas.getServices() }
             dependentSchemas
         } else {
-            serviceProtoLoader.getServiceProto(actName).let {
+            val protoService = serviceProtoLoader.getServiceProto(actName).let {
                 protobufParser.parseBase64ToJsonTree(it)
-            }.let {
+            }
+            logger.debug { "protoService" }
+            logger.debug { protoService }
+            protoService.let {
                 protobufParser.parseJsonToProtoSchemas(actName, it)
             }.let {
                 actNameToSchemaPackage.put(actName, it)
