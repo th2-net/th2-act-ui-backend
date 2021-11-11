@@ -275,10 +275,11 @@ class SchemaParser(private val context: Context) {
             it.get("kind")?.textValue() == "Th2Link"
         }.mapNotNull { it?.get("spec")?.get("boxes-relation")?.get("router-mq") }
             .flatten()
+            .mapNotNull { it?.get("from")?.get("box")?.textValue() to it?.get("to")?.get("box")?.textValue() }
             .mapNotNull {
                 when {
-                    boxesBySession.contains(it?.get("from")?.get("box")?.textValue()) -> it?.get("to")?.get("box")?.textValue()
-                    boxesBySession.contains(it?.get("to")?.get("box")?.textValue()) -> it?.get("from")?.get("box")?.textValue()
+                    boxesBySession.contains(it.first) -> it.second
+                    boxesBySession.contains(it.second) -> it.first
                     else -> null
                 }
             }
