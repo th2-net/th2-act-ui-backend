@@ -203,7 +203,7 @@ class Main {
                 get("/dictionaries/{session}") {
                     val session = call.parameters["session"]
                     handleRequest(call, "dictionaries by session", cacheControl, session) {
-                        schemaParser.getDictionariesBySessions(session!!)
+                        schemaParser.getDictionariesBySession(session!!)
                     }
                 }
 
