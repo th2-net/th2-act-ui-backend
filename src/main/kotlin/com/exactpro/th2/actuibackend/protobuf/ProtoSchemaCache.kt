@@ -64,8 +64,6 @@ class ProtoSchemaCache(
             val protoService = serviceProtoLoader.getServiceProto(actName).let {
                 protobufParser.parseBase64ToJsonTree(it)
             }
-            logger.debug { "protoService" }
-            logger.debug { protoService }
             protoService.let {
                 protobufParser.parseJsonToProtoSchemas(actName, it)
             }.let {
@@ -106,8 +104,11 @@ class ProtoSchemaCache(
             val protoMethod = getServiceDescription(name).methods.firstOrNull { it.methodName == methodName }
                 ?: throw InvalidRequestException("Unknown method name: '$methodName'")
             logger.debug { protoMethod }
+            logger.debug { "methods" }
+            logger.debug { schema.keys }
             val map = mutableMapOf<String, JsonNode>()
             listOf(protoMethod.inputType, protoMethod.outputType).forEach {
+                logger.debug { "service name $it" }
                 if (schema.containsKey(it)) map[it] = schema[it]!!
             }
             logger.debug { "response" }
