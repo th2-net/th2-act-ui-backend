@@ -34,6 +34,7 @@ import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.ehcache.Cache
@@ -245,24 +246,59 @@ class SchemaParser(private val context: Context) {
             }.associate { it }
     }
 
-    suspend fun getDictionariesBySession(session: String): List<*> {
-        val boxes = getJsonTree().get("resources").elements().asSequence().filter {
-            it?.get("spec")?.get("custom-config")?.get("session-alias")?.textValue() == session
+    private suspend fun getDictionaries(): List<String> {
+        return getDictionaryFromJsonTree(getJsonTree()).map { it.get("name").textValue() }
+    }
+
+    suspend fun getDictionariesBySession(session: String): Collection<String> {
+        val jsonTree = getJsonTree()
+        val boxesBySession = jsonTree.get("resources").elements().asSequence().mapNotNull { resource ->
+            resource.get("name")?.textValue()?.let { it to resource }
+        }.mapNotNull { resource ->
+            resource.second?.findValue("pins")?.elements()?.asSequence()?.map { resource.first to it }
         }
-            .mapNotNull { it?.get("name")?.textValue() }
+            .flatMap { it }
+            .mapNotNull { resource ->
+                resource.second?.get("filters")?.elements()?.asSequence()?.map { resource.first to it }
+            }
+            .flatMap { it }
+            .mapNotNull { resource ->
+                resource.second?.get("metadata")?.elements()?.asSequence()?.map { resource.first to it }
+            }
+            .flatMap { it }
+            .filter { it.second?.get("field-name")?.textValue() == "session_alias" }
+            .filter { it.second?.get("expected-value")?.textValue() == session }
+            .mapNotNull { it.first }
             .toList()
 
-        return getJsonTree().get("resources").elements().asSequence().filter {
+        val linkedBoxes = jsonTree.findParents("kind").asSequence().filter {
+            it.get("kind")?.textValue() == "Th2Link"
+        }.mapNotNull { it?.get("spec")?.get("boxes-relation")?.get("router-mq") }
+            .flatten()
+            .mapNotNull {
+                when {
+                    boxesBySession.contains(it?.get("from")?.get("box")?.textValue()) -> it?.get("to")?.get("box")?.textValue()
+                    boxesBySession.contains(it?.get("to")?.get("box")?.textValue()) -> it?.get("from")?.get("box")?.textValue()
+                    else -> null
+                }
+            }
+            .toSet()
+
+        if (linkedBoxes.isEmpty()) {
+            return getDictionaries()
+        }
+
+        return jsonTree.findParents("kind").asSequence().filter {
             it?.get("kind")?.textValue() == "Th2Link"
         }
             .mapNotNull { it?.get("spec")?.get("dictionaries-relation") }
-            .flatMap { it.elements().asSequence() }
-            .map {
-                Pair(it?.get("box")?.textValue(), it?.get("dictionary")?.get("name")?.textValue())
+            .flatten()
+            .mapNotNull {
+                it?.get("box")?.textValue() to it?.get("dictionary")?.get("name")?.textValue()
             }
-            .filter { boxes.contains(it.first) }
+            .filter { linkedBoxes.contains(it.first) }
             .mapNotNull { it.second }
-            .toList()
+            .toSet()
     }
 
     suspend fun getDictionarySchema(dictionaryName: String): Map<String, DataMap> {
