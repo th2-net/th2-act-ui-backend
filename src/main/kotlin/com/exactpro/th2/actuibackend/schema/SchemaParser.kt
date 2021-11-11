@@ -245,10 +245,6 @@ class SchemaParser(private val context: Context) {
             }.associate { it }
     }
 
-    suspend fun getDictionaries(): List<String> {
-        return getDictionaryFromJsonTree(getJsonTree()).map { it.get("name").textValue() }
-    }
-
     suspend fun getDictionariesBySessions(session: String): List<*> {
         val boxes = getJsonTree().get("resources").elements().asSequence().filter {
             it?.get("spec")?.get("custom-config")?.get("session-alias")?.textValue() == session

@@ -185,12 +185,6 @@ class Main {
 
             routing {
 
-                get("/dictionaries") {
-                    handleRequest(call, "dictionaries", cacheControl) {
-                        schemaParser.getDictionaries()
-                    }
-                }
-
                 get("/{dictionary}/{message}") {
                     val message = call.parameters["message"]
                     val dictionary = call.parameters["dictionary"]
