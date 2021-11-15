@@ -57,7 +57,7 @@ class ProtoSchemaCache(
     private suspend fun getDependentSchemaByActName(actName: String): DependentSchemas {
         return if (actNameToSchemaPackage.containsKey(actName)) {
             val dependentSchemas = actNameToSchemaPackage.get(actName)
-            logger.debug { "services" }
+            logger.debug { "services in dependent schemas" }
             logger.debug { dependentSchemas.getServices() }
             dependentSchemas
         } else {
@@ -68,8 +68,6 @@ class ProtoSchemaCache(
                 protobufParser.parseJsonToProtoSchemas(actName, it)
             }.let {
                 actNameToSchemaPackage.put(actName, it)
-                logger.debug { "services" }
-                logger.debug { it.getServices() }
                 it
             }
         }
@@ -96,23 +94,20 @@ class ProtoSchemaCache(
 
     suspend fun getJsonSchemaByServiceName(name: FullServiceName, methodName: String?): Map<String, JsonNode> {
         val schema = getPackageByActName(name.actName).getJsonSchemaByService(name)
-        logger.debug { "schema" }
-        logger.debug { schema }
+        logger.trace { "schema" }
+        logger.trace { schema }
         return if (methodName == null) {
             schema
         } else {
             val protoMethod = getServiceDescription(name).methods.firstOrNull { it.methodName == methodName }
                 ?: throw InvalidRequestException("Unknown method name: '$methodName'")
             logger.debug { protoMethod }
-            logger.debug { "methods" }
-            logger.debug { schema.keys }
+            logger.trace { "methods" }
+            logger.trace { schema.keys }
             val map = mutableMapOf<String, JsonNode>()
             listOf(protoMethod.inputType, protoMethod.outputType).forEach {
-                logger.debug { "service name $it" }
                 if (schema.containsKey(it)) map[it] = schema[it]!!
             }
-            logger.debug { "response" }
-            logger.debug { map }
             map
         }
     }

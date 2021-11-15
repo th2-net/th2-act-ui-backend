@@ -67,7 +67,7 @@ class ServiceProtoLoader(private val context: Context) {
             serviceType,
             serviceName
         )
-        logger.debug { "url descriptor $url" }
+        logger.debug { "descriptor url $url" }
         return url
     }
 
