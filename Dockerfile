@@ -1,7 +1,7 @@
-FROM golang:1.10.4 AS gobuilder
+FROM golang:1.16 AS gobuilder
 WORKDIR /compile
 RUN export PATH=$PATH:$(go env GOPATH)/bin
-RUN GO111MODULE=on GOBIN=`pwd` go get github.com/chrusty/protoc-gen-jsonschema/cmd/protoc-gen-jsonschema && go install github.com/chrusty/protoc-gen-jsonschema/cmd/protoc-gen-jsonschema
+RUN GO111MODULE=on GOBIN=`pwd` go install github.com/chrusty/protoc-gen-jsonschema/cmd/protoc-gen-jsonschema@1.1.1
 
 FROM gradle:6.6-jdk11 AS build
 ARG release_version=0.0.0
