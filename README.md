@@ -20,7 +20,7 @@ This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-
 ### REST
 
 #### GET
-`http://localhost:8081/dictionaries` - returns a list of dictionaries names in current schema
+`http://localhost:8081/dictionaries/{session}` - returns a list of dictionaries names in current schema by session name (see [below](#search-for-dictionaries-by-session))
 
 `http://localhost:8081/{dictionary}` - returns a list of message templates names with the specified dictionary name
 
@@ -462,6 +462,36 @@ Pin configuration expmple:
         - parsed
         - publish
 ```
+
+### Search for dictionaries by session
+
+First of all, it's looking for components that have a session according to the following pattern.
+
+```json
+{
+  "kind": "Th2Box",
+  "name": "boxName",
+  "spec": {
+    "pins": [
+      {
+        "name": "pinName",
+        "filters": [
+          {
+            "metadata": [
+              {
+                "field-name": "session_alias",
+                "expected-value": "value"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The next step is to get all connected to previously found components and search for connected dictionaries. If the resulting list is empty, all dictionaries are returned.
 
 ### Act mode additianal configuration
 
