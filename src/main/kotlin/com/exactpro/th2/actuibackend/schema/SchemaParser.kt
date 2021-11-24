@@ -26,7 +26,6 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
-import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.client.features.*
 import io.ktor.client.request.*
