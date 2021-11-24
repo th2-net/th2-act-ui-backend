@@ -256,6 +256,41 @@ class SchemaParser(private val context: Context) {
             ?.any { it?.get("expected-value")?.textValue() == session } ?: false
     }
 
+    private fun getConfigsByKind(jsonTree: JsonNode, kindsSet: Set<String>): List<JsonNode> {
+        return jsonTree.findParents("kind").asSequence().filter {
+            kindsSet.contains(it?.get("kind")?.textValue())
+        }.toList()
+    }
+
+    private fun getLinkedBoxes(jsonTree: JsonNode, boxes: Collection<String>): Set<String> {
+        return getConfigsByKind(jsonTree, setOf("Th2Link"))
+            .asSequence()
+            .mapNotNull { it.get("spec")?.get("boxes-relation")?.get("router-mq") }
+            .flatten()
+            .mapNotNull { it?.get("from")?.get("box")?.textValue() to it?.get("to")?.get("box")?.textValue() }
+            .mapNotNull {
+                when {
+                    boxes.contains(it.first) -> it.second
+                    boxes.contains(it.second) -> it.first
+                    else -> null
+                }
+            }
+            .toSet()
+    }
+
+    private fun getLinkedDictionaries(jsonTree: JsonNode, boxes: Collection<String>): Set<String> {
+        return getConfigsByKind(jsonTree, setOf("Th2Link"))
+            .asSequence()
+            .mapNotNull { it.get("spec")?.get("dictionaries-relation") }
+            .flatten()
+            .mapNotNull {
+                it?.get("box")?.textValue() to it?.get("dictionary")?.get("name")?.textValue()
+            }
+            .filter { boxes.contains(it.first) }
+            .mapNotNull { it.second }
+            .toSet()
+    }
+
     suspend fun getDictionariesBySession(session: String): Collection<String> {
         val jsonTree = getJsonTree()
         val boxesBySession = jsonTree.get("resources").elements().asSequence().mapNotNull { resource ->
@@ -266,35 +301,13 @@ class SchemaParser(private val context: Context) {
             .map { it.first }
             .toList()
 
-        val linkedBoxes = jsonTree.findParents("kind").asSequence().filter {
-            it.get("kind")?.textValue() == "Th2Link"
-        }.mapNotNull { it?.get("spec")?.get("boxes-relation")?.get("router-mq") }
-            .flatten()
-            .mapNotNull { it?.get("from")?.get("box")?.textValue() to it?.get("to")?.get("box")?.textValue() }
-            .mapNotNull {
-                when {
-                    boxesBySession.contains(it.first) -> it.second
-                    boxesBySession.contains(it.second) -> it.first
-                    else -> null
-                }
-            }
-            .toSet()
+        val linkedBoxes = getLinkedBoxes(jsonTree, boxesBySession)
 
         if (linkedBoxes.isEmpty()) {
             return getDictionaries()
         }
 
-        return jsonTree.findParents("kind").asSequence().filter {
-            it?.get("kind")?.textValue() == "Th2Link"
-        }
-            .mapNotNull { it?.get("spec")?.get("dictionaries-relation") }
-            .flatten()
-            .mapNotNull {
-                it?.get("box")?.textValue() to it?.get("dictionary")?.get("name")?.textValue()
-            }
-            .filter { linkedBoxes.contains(it.first) }
-            .mapNotNull { it.second }
-            .toSet()
+        return getLinkedDictionaries(jsonTree, linkedBoxes)
     }
 
     suspend fun getDictionarySchema(dictionaryName: String): Map<String, DataMap> {
