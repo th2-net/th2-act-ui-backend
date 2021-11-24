@@ -20,7 +20,7 @@ This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-
 ### REST
 
 #### GET
-`http://localhost:8081/dictionaries` - returns a list of dictionaries names in current schema
+`http://localhost:8081/dictionaries/{session}` - returns a list of dictionaries names in current schema by session name (see [below](#search-for-dictionaries-by-session))
 
 `http://localhost:8081/{dictionary}` - returns a list of message templates names with the specified dictionary name
 
@@ -463,6 +463,36 @@ Pin configuration expmple:
         - publish
 ```
 
+### Search for dictionaries by session
+
+First of all, it's looking for components that have a session according to the following pattern.
+
+```json
+{
+  "kind": "Th2Box",
+  "name": "boxName",
+  "spec": {
+    "pins": [
+      {
+        "name": "pinName",
+        "filters": [
+          {
+            "metadata": [
+              {
+                "field-name": "session_alias",
+                "expected-value": "value"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+The next step is to get all connected to previously found components and search for connected dictionaries. If the resulting list is empty, all dictionaries are returned.
+
 ### Act mode additianal configuration
 
 To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as docker labels. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
@@ -471,6 +501,13 @@ Make sure that target act component's box type `spec: type: th2-act` matches one
 
 
 ## Release notes
+
+### 0.3.3
+
+#### Changed:
+
++ Getting dictionaries by session.
+
 
 ### 0.3.1
 

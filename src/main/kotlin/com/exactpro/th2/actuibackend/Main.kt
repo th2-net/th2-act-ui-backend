@@ -185,12 +185,6 @@ class Main {
 
             routing {
 
-                get("/dictionaries") {
-                    handleRequest(call, "dictionaries", cacheControl) {
-                        schemaParser.getDictionaries()
-                    }
-                }
-
                 get("/{dictionary}/{message}") {
                     val message = call.parameters["message"]
                     val dictionary = call.parameters["dictionary"]
@@ -203,6 +197,13 @@ class Main {
                     val dictionary = call.parameters["dictionary"]
                     handleRequest(call, "dictionary", cacheControl, dictionary) {
                         schemaParser.getDictionarySchema(dictionary!!).map { it.key }
+                    }
+                }
+
+                get("/dictionaries/{session}") {
+                    val session = call.parameters["session"]
+                    handleRequest(call, "dictionaries by session", cacheControl, session) {
+                        schemaParser.getDictionariesBySession(session!!)
                     }
                 }
 
