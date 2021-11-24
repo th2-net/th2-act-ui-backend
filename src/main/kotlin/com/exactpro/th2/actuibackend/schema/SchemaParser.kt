@@ -306,7 +306,9 @@ class SchemaParser(private val context: Context) {
             return getDictionaries()
         }
 
-        return getLinkedDictionaries(jsonTree, linkedBoxes)
+        val linkedDictionaries = getLinkedDictionaries(jsonTree, linkedBoxes)
+
+        return linkedDictionaries.ifEmpty { getDictionaries() }
     }
 
     suspend fun getDictionarySchema(dictionaryName: String): Map<String, DataMap> {
