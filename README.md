@@ -502,6 +502,13 @@ Make sure that target act component's box type `spec: type: th2-act` matches one
 
 ## Release notes
 
+### 0.3.3
+
+#### Changed:
+
++ Getting dictionaries by session.
+
+
 ### 0.3.1
 
 #### Changed:
