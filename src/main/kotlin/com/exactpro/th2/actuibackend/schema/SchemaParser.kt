@@ -26,6 +26,7 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
+import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -34,7 +35,6 @@ import io.ktor.http.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
 import org.ehcache.Cache
@@ -250,25 +250,20 @@ class SchemaParser(private val context: Context) {
         return getDictionaryFromJsonTree(getJsonTree()).map { it.get("name").textValue() }
     }
 
+    private fun checkSessionsAliasContains(jsonTree: JsonNode, session: String): Boolean {
+        return jsonTree.findParents("field-name")?.asSequence()
+            ?.filter { it?.get("field-name")?.textValue() == "session_alias" }
+            ?.any { it?.get("expected-value")?.textValue() == session } ?: false
+    }
+
     suspend fun getDictionariesBySession(session: String): Collection<String> {
         val jsonTree = getJsonTree()
         val boxesBySession = jsonTree.get("resources").elements().asSequence().mapNotNull { resource ->
             resource.get("name")?.textValue()?.let { it to resource }
-        }.mapNotNull { resource ->
-            resource.second?.findValue("pins")?.elements()?.asSequence()?.map { resource.first to it }
+        }.filter {
+            checkSessionsAliasContains(it.second, session)
         }
-            .flatMap { it }
-            .mapNotNull { resource ->
-                resource.second?.get("filters")?.elements()?.asSequence()?.map { resource.first to it }
-            }
-            .flatMap { it }
-            .mapNotNull { resource ->
-                resource.second?.get("metadata")?.elements()?.asSequence()?.map { resource.first to it }
-            }
-            .flatMap { it }
-            .filter { it.second?.get("field-name")?.textValue() == "session_alias" }
-            .filter { it.second?.get("expected-value")?.textValue() == session }
-            .mapNotNull { it.first }
+            .map { it.first }
             .toList()
 
         val linkedBoxes = jsonTree.findParents("kind").asSequence().filter {
