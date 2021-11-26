@@ -24,6 +24,7 @@ data class MessageSendRequest(
     val session: String,
     val dictionary: String,
     val messageType: String,
+    val isValidated: Boolean,
     val message: Map<String, Any>
 ) {
 
@@ -38,6 +39,7 @@ data class MessageSendRequest(
         session = getRequiredParameter("session", parameters),
         dictionary = getRequiredParameter("dictionary", parameters),
         messageType = getRequiredParameter("messageType", parameters),
+        isValidated =  parameters["isValidated"]?.first()?.toBoolean() ?: true,
         message = methodCallMessage
     )
 }

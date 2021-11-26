@@ -172,7 +172,10 @@ class Main {
     @InternalAPI
     private fun startServer() {
 
-        System.setProperty(IO_PARALLELISM_PROPERTY_NAME, applicationContext.configuration.ioDispatcherThreadPoolSize.value)
+        System.setProperty(
+            IO_PARALLELISM_PROPERTY_NAME,
+            applicationContext.configuration.ioDispatcherThreadPoolSize.value
+        )
 
         embeddedServer(Netty, applicationContext.configuration.port.value.toInt()) {
 
@@ -226,7 +229,9 @@ class Main {
                     handleRequest(call, "message", cacheControl, queryParametersMap) {
                         val request =
                             MessageSendRequest(queryParametersMap, jacksonMapper.readValue(rawMessage))
-                        messageValidator.validate(request)
+                        if (request.isValidated) {
+                            messageValidator.validate(request)
+                        }
                         messageService.sendRabbitMessage(request, rabbitMqService.parentEventId).also {
                             call.response.cacheControl(CacheControl.NoCache(null))
                         }
