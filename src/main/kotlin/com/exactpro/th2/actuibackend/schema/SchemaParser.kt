@@ -26,6 +26,7 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
+import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -57,11 +58,13 @@ class SchemaParser(private val context: Context) {
     private val getSchemaRetryDelay = context.configuration.getSchemaRetryDelay.value.toLong()
 
     private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
-    private val jsonTreeCache: Cache<String, JsonNode> = manager.createCache(
+    private var jsonTree: JsonNode? = null
+    private var jsonTreeCacheCode: Int = 0
+    private val jsonTreeCache: Cache<String, Boolean> = manager.createCache(
         "schema",
         CacheConfigurationBuilder.newCacheConfigurationBuilder(
             String::class.java,
-            JsonNode::class.java,
+            Boolean::class.java,
             ResourcePoolsBuilder.heap(1)
         ).withExpiry(
             ExpiryPolicyBuilder
@@ -109,13 +112,18 @@ class SchemaParser(private val context: Context) {
 
     private suspend fun getJsonTree(): JsonNode {
         return withContext(Dispatchers.IO) {
-            if (jsonTreeCache.containsKey(JSON_TREE)) {
-                jsonTreeCache.get(JSON_TREE)
+            if (jsonTreeCache.containsKey(JSON_TREE) && jsonTree != null) {
+                jsonTree
             } else {
-                context.jacksonMapper.readTree(getSchemaXml()).let {
-                    jsonTreeCache.put(JSON_TREE, it)
-                    it
-                }
+                val schemaXml = getSchemaXml()
+                if (schemaXml.hashCode() != jsonTreeCacheCode || jsonTree == null) {
+                    jsonTreeCacheCode = schemaXml.hashCode()
+                    context.jacksonMapper.readTree(schemaXml).let {
+                        jsonTreeCache.put(JSON_TREE, true)
+                        jsonTree = it
+                        it
+                    }
+                } else jsonTree
             }
         }
     }
@@ -224,9 +232,10 @@ class SchemaParser(private val context: Context) {
 
     suspend fun getActs(): List<String> {
         val configs = getConfigsByType(TH2_ACT)
-        return configs.mapNotNull {
+        val list = configs.mapNotNull {
             it.get("name")?.textValue()
         }
+        return list
     }
 
     suspend fun getServicePorts(serviceNames: Set<String>): Map<String, Int> {
