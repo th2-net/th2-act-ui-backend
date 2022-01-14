@@ -59,22 +59,23 @@ class SchemaParser(private val context: Context) {
 
     private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
     private var jsonTree: JsonNode? = null
-    private var jsonTreeCacheCode: Int = 0
-    private val jsonTreeCache: Cache<String, Boolean> = manager.createCache(
+    private var jsonTreeCommitRef: String = ""
+
+    private val jsonTreeCache: Cache<String, JsonNode> = manager.createCache(
         "schema",
         CacheConfigurationBuilder.newCacheConfigurationBuilder(
             String::class.java,
-            Boolean::class.java,
+            JsonNode::class.java,
             ResourcePoolsBuilder.heap(1)
         ).withExpiry(
             ExpiryPolicyBuilder
                 .timeToLiveExpiration(ofSeconds(context.configuration.schemaCacheExpiry.value.toLong()))
         )
+            .withDefaultEventListenersThreadPool()
             .build()
     )
 
     private val TH2_ACT = context.configuration.actTypes
-
 
     @KtorExperimentalAPI
     private suspend fun getSchemaXml(): ByteArray {
@@ -109,23 +110,32 @@ class SchemaParser(private val context: Context) {
         }
     }
 
+    /**
+     * Get the hash of the last commit using a regular expression.
+     */
+    private fun getCommitRef(schema: String): String {
+        return Regex("""commitRef":"\w{40}",""").find(schema)?.value?.substring(12, 52) ?: ""
+    }
 
     private suspend fun getJsonTree(): JsonNode {
         return withContext(Dispatchers.IO) {
             if (jsonTreeCache.containsKey(JSON_TREE) && jsonTree != null) {
-                jsonTree
-            } else {
-                val schemaXml = getSchemaXml()
-                if (schemaXml.hashCode() != jsonTreeCacheCode || jsonTree == null) {
-                    jsonTreeCacheCode = schemaXml.hashCode()
-                    context.jacksonMapper.readTree(schemaXml).let {
-                        jsonTreeCache.put(JSON_TREE, true)
-                        jsonTree = it
-                        it
-                    }
-                } else jsonTree
+                return@withContext jsonTree
             }
-        }
+
+            val schemaXml = getSchemaXml()
+            val commitRef = getCommitRef(String(schemaXml))
+            if (commitRef == jsonTreeCommitRef && jsonTree != null) {
+                return@withContext jsonTree
+            }
+
+            jsonTreeCommitRef = commitRef
+            context.jacksonMapper.readTree(schemaXml).let {
+                jsonTreeCache.put(JSON_TREE, it)
+                jsonTree = it
+                it
+            }
+        } ?: throw SchemaValidateException("JsonTree must be initialized")
     }
 
     private suspend fun getXmlDictionary(dictionaryName: String): IDictionaryStructure {
