@@ -26,6 +26,7 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
+import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -71,7 +72,7 @@ class SchemaParser(private val context: Context) {
     )
 
     private val TH2_ACT = context.configuration.actTypes
-
+    private val TH2_CONN = setOf("th2-conn")
 
     @KtorExperimentalAPI
     private suspend fun getSchemaXml(): ByteArray {
@@ -292,11 +293,12 @@ class SchemaParser(private val context: Context) {
 
     suspend fun getDictionariesBySession(session: String): Collection<String> {
         val jsonTree = getJsonTree()
-        val boxesBySession = jsonTree.get("resources").elements().asSequence().mapNotNull { resource ->
-            resource.get("name")?.textValue()?.let { it to resource }
-        }.filter {
-            checkSessionsAliasContains(it.second, session)
-        }
+        val boxesBySession = getConfigsByType(TH2_CONN)
+            .mapNotNull { resource ->
+                resource.get("name")?.textValue()?.let { it to resource }
+            }.filter {
+                checkSessionsAliasContains(it.second, session)
+            }
             .map { it.first }
             .toList()
 
