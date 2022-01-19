@@ -81,7 +81,7 @@ class Configuration(customConfiguration: CustomConfigurationClass) {
     }
 
     val schemaCacheExpiry: Variable =
-        Variable("schemaCacheExpiry", customConfiguration.schemaCacheExpiry.toString(), "86400")
+        Variable("schemaCacheExpiry", customConfiguration.schemaCacheExpiry.toString(), "180")
 
     val protoCacheExpiry: Variable =
         Variable("protoCacheExpiry", customConfiguration.protoCacheExpiry.toString(), "3600")
