@@ -18,6 +18,7 @@ package com.exactpro.th2.actuibackend
 
 import CustomConfigurationClass
 import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
+import com.exactpro.th2.actuibackend.entities.exceptions.MethodRequestException
 import com.exactpro.th2.actuibackend.entities.requests.FullServiceName
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.requests.MethodCallRequest
@@ -113,6 +114,16 @@ class Main {
         }
     }
 
+    @InternalAPI
+    private suspend fun sendErrorCode(call: ApplicationCall, result: Map<String, Any?>, code: HttpStatusCode) {
+        withContext(NonCancellable) {
+            call.respondText(
+                jacksonMapper.asStringSuspend(result),
+                ContentType.Application.Json, code
+            )
+        }
+    }
+
 
     @InternalAPI
     private suspend fun handleRequest(
@@ -145,6 +156,9 @@ class Main {
                     logger.error(e) { "unable to handle request '$requestName' with parameters '$stringParameters' - not found" }
                     sendErrorCode(call, e, HttpStatusCode.NotFound)
 
+                } catch (e: MethodRequestException) {
+                    logger.error(e) { "unable to handle request '$requestName' with parameters '$stringParameters' - bad request" }
+                    sendErrorCode(call, e.result, HttpStatusCode.BadRequest)
                 } catch (e: InvalidRequestException) {
                     logger.error(e) { "unable to handle request '$requestName' with parameters '$stringParameters' - bad request" }
                     sendErrorCode(call, e, HttpStatusCode.BadRequest)

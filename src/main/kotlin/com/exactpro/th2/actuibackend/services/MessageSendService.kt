@@ -17,6 +17,7 @@
 package com.exactpro.th2.actuibackend.services
 
 import com.exactpro.th2.actuibackend.Context
+import com.exactpro.th2.actuibackend.entities.exceptions.MethodRequestException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.requests.MethodCallRequest
 import com.exactpro.th2.actuibackend.getMessagesFromStackTrace
@@ -154,19 +155,28 @@ class MessageSendService(
         return withContext(Dispatchers.IO) {
             val subrootEvent = methodCallRequestEvent(parentEventId.id, request, true)
 
-            var responseInfo: String?
-            try {
-                responseInfo = grpcService.sendMessage(request, subrootEvent).message
-            } catch (e: Exception) {
-                responseInfo = e.message
-                createSaveError(subrootEvent.id, "Method call failed", e.getMessagesFromStackTrace())
-            }
-            mapOf(
+            var result: Map<String, Any?> = mapOf(
                 "eventId" to subrootEvent.id,
                 "methodName" to request.methodName,
-                "fullServiceName" to request.fullServiceName.toString(),
-                "responseMessage" to tryToCreateJson(responseInfo)
+                "fullServiceName" to request.fullServiceName.toString()
             )
+
+            try {
+                with(result) {
+                    plus(
+                        "responseMessage" to grpcService.sendMessage(
+                            request,
+                            subrootEvent
+                        ).message
+                    )
+                }.also { result = it }
+            } catch (e: Exception) {
+                result.plus("responseMessage" to tryToCreateJson(e.message)).also { result = it }
+                createSaveError(subrootEvent.id, "Method call failed", e.getMessagesFromStackTrace())
+                throw MethodRequestException(e.getMessagesFromStackTrace(), result, e)
+            }
+
+            result
         }
     }
 }
