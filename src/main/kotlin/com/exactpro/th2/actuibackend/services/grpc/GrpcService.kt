@@ -90,7 +90,13 @@ class GrpcService(
     }
 
     private fun getPort(boxName: String): Int {
-        return boxNameToPort[boxName]
+        val boxNameToPortLocal = runBlocking {
+            schemaParser.getActs().let {
+                schemaParser.getServicePorts(it.toSet())
+            }
+        }
+
+        return boxNameToPortLocal[boxName]
             ?: throw SendProtoMessageException("Unable to determine box: '$boxName' port")
     }
 
