@@ -164,10 +164,12 @@ class MessageSendService(
             try {
                 with(result) {
                     plus(
-                        "responseMessage" to grpcService.sendMessage(
-                            request,
-                            subrootEvent
-                        ).message
+                        "responseMessage" to tryToCreateJson(
+                            grpcService.sendMessage(
+                                request,
+                                subrootEvent
+                            ).message
+                        )
                     )
                 }.also { result = it }
             } catch (e: Exception) {
