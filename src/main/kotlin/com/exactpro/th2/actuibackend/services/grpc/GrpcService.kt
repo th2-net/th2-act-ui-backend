@@ -82,11 +82,9 @@ class GrpcService(
         }
     }
 
-    private fun getPort(boxName: String): Int {
-        val boxNameToPort = runBlocking {
-            schemaParser.getActs().let {
-                schemaParser.getServicePorts(it.toSet())
-            }
+    private suspend fun getPort(boxName: String): Int {
+        val boxNameToPort = schemaParser.getActs().let {
+            schemaParser.getServicePorts(it.toSet())
         }
 
         return boxNameToPort[boxName]
