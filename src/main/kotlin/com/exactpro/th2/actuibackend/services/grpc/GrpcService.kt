@@ -24,7 +24,6 @@ import com.exactpro.th2.actuibackend.entities.responces.MethodCallResponse
 import com.exactpro.th2.actuibackend.protobuf.ProtoSchemaCache
 import com.exactpro.th2.actuibackend.schema.SchemaParser
 import com.exactpro.th2.common.grpc.EventID
-import com.exactpro.th2.common.message.message
 import com.google.protobuf.Descriptors
 import com.google.protobuf.DynamicMessage
 import io.grpc.CallOptions
@@ -57,12 +56,6 @@ class GrpcService(
     private val statusField = "status"
     private val errorStatus = "ERROR"
 
-    private val boxNameToPort = runBlocking {
-        schemaParser.getActs().let {
-            schemaParser.getServicePorts(it.toSet())
-        }
-    }
-
     private fun validateMessage(message: DynamicMessage, stringMessage: String) {
         val statusField = message.allFields.entries.firstOrNull { it.key.name.toLowerCase().contains(statusField) }
         if (statusField?.value?.toString()?.toUpperCase() == errorStatus)
@@ -90,13 +83,13 @@ class GrpcService(
     }
 
     private fun getPort(boxName: String): Int {
-        val boxNameToPortLocal = runBlocking {
+        val boxNameToPort = runBlocking {
             schemaParser.getActs().let {
                 schemaParser.getServicePorts(it.toSet())
             }
         }
 
-        return boxNameToPortLocal[boxName]
+        return boxNameToPort[boxName]
             ?: throw SendProtoMessageException("Unable to determine box: '$boxName' port")
     }
 
