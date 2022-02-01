@@ -26,6 +26,7 @@ import com.exactpro.th2.actuibackend.entities.exceptions.InvalidRequestException
 import com.exactpro.th2.actuibackend.entities.exceptions.SchemaValidateException
 import com.exactpro.th2.actuibackend.entities.requests.MessageSendRequest
 import com.exactpro.th2.actuibackend.entities.schema.*
+import com.exactpro.th2.actuibackend.entities.schema.Array
 import com.fasterxml.jackson.databind.JsonNode
 import io.ktor.client.features.*
 import io.ktor.client.request.*
@@ -36,12 +37,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import org.ehcache.Cache
-import org.ehcache.config.builders.CacheConfigurationBuilder
-import org.ehcache.config.builders.CacheManagerBuilder
-import org.ehcache.config.builders.ExpiryPolicyBuilder
-import org.ehcache.config.builders.ResourcePoolsBuilder
-import java.time.Duration.ofSeconds
 
 
 class SchemaParser(private val context: Context) {
@@ -56,22 +51,8 @@ class SchemaParser(private val context: Context) {
     private val getSchemaRetryCount = context.configuration.getSchemaRetryCount.value.toLong()
     private val getSchemaRetryDelay = context.configuration.getSchemaRetryDelay.value.toLong()
 
-    private val manager = CacheManagerBuilder.newCacheManagerBuilder().build(true)
     private var jsonTree: JsonNode? = null
     private var jsonTreeCommitRef: String = ""
-
-    private val jsonTreeCache: Cache<String, JsonNode> = manager.createCache(
-        "schema",
-        CacheConfigurationBuilder.newCacheConfigurationBuilder(
-            String::class.java,
-            JsonNode::class.java,
-            ResourcePoolsBuilder.heap(1)
-        ).withExpiry(
-            ExpiryPolicyBuilder
-                .timeToLiveExpiration(ofSeconds(context.configuration.schemaCacheExpiry.value.toLong()))
-        )
-            .build()
-    )
 
     private val TH2_ACT = context.configuration.actTypes
 
@@ -118,10 +99,6 @@ class SchemaParser(private val context: Context) {
 
     private suspend fun getJsonTree(): JsonNode {
         return withContext(Dispatchers.IO) {
-            if (jsonTreeCache.containsKey(JSON_TREE) && jsonTree != null) {
-                return@withContext jsonTree
-            }
-
             val schemaXml = getSchemaXml()
             val commitRef = getCommitRef(String(schemaXml))
             if (commitRef == jsonTreeCommitRef && jsonTree != null) {
@@ -130,7 +107,6 @@ class SchemaParser(private val context: Context) {
 
             jsonTreeCommitRef = commitRef
             context.jacksonMapper.readTree(schemaXml).let {
-                jsonTreeCache.put(JSON_TREE, it)
                 jsonTree = it
                 it
             }
