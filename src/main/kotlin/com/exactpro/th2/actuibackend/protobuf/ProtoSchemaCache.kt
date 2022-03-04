@@ -106,7 +106,10 @@ class ProtoSchemaCache(
             logger.trace { schema.keys }
             val map = mutableMapOf<String, JsonNode>()
             listOf(protoMethod.inputType, protoMethod.outputType).forEach {
-                if (schema.containsKey(it)) map[it] = schema[it]!!
+                map[it] = schema[it] ?: JsonSchema.createEmptyJsonSchema(
+                    it,
+                    context.jacksonMapper
+                ).schema
             }
             map
         }
