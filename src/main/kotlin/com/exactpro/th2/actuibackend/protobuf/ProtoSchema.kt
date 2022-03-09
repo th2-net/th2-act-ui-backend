@@ -66,6 +66,16 @@ data class JsonSchema private constructor(val schemaName: String, val schema: Js
             setDefinitionsPrefix(schema)
             return JsonSchema(schemaName, schema)
         }
+
+        fun createEmptyJsonSchema(schemaName: String, mapper: ObjectMapper): JsonSchema {
+            val emptySchema = mapper.createObjectNode().apply {
+                put("\$schema","http://json-schema.org/draft-04/schema#")
+                put("type","object")
+                put("additionalProperties","false")
+                put("properties","{}")
+            }
+            return JsonSchema(schemaName, emptySchema)
+        }
     }
 }
 
