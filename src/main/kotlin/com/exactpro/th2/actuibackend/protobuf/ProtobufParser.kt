@@ -42,7 +42,15 @@ class ProtobufParser(private val context: Context) {
         val logger = KotlinLogging.logger { }
     }
 
-    private val defaultPath = "src/main/resources/protobuf"
+    private val defaultFolderName = "protobuf"
+    private val defaultPath = "/tmp/$defaultFolderName"
+    private val userDefinedPath = Path.of(context.configuration.tempFileRootDirectory.value)
+
+    private val protoCompileDirectory =
+        Files.createTempDirectory(userDefinedPath, defaultFolderName)
+            .toAbsolutePath()
+            .toString()
+
     private val jsonSchemaGoPlugin: String = findJsonPlugin("protoc-gen-jsonschema")
     private val protoFiles = createDirectory("proto")
     private val temporaryFiles = createDirectory("temp")
@@ -78,7 +86,7 @@ class ProtobufParser(private val context: Context) {
 
 
     private fun createDirectory(directoryName: String): File {
-        return context.configuration.protoCompileDirectory.value.let {
+        return protoCompileDirectory.let {
             var directory = File(it + File.separator + directoryName)
             if (!createDirIfNotExist(directory)) {
                 directory = File(defaultPath + File.separator + directoryName)

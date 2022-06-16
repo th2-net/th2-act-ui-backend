@@ -399,7 +399,7 @@ spec:
         
     schemaDefinitionLink: "http://infra-mgr.service.svc.cluster.local:8080/schema/<namespace>" # link to schema definition
     schemaDescriptorsLink: "http://infra-mgr.service.svc.cluster.local:8080/descriptor/<namespace>" # link to the api to get the proto service descriptors from
-    protoCompileDirectory: "src/main/resources/protobuf" # directory for compiling proto files
+    tempFileRootDirectory: "/tmp" # directory for compiling proto files
     namespace: "th2-namespace" # namespace for sending grpc messages
     actTypes: ["th2-act"] # th2-box types that act-ui-backend will list as available grpc services
     schemaCacheExpiry: 86400 # schemaXML cache clearing frequency
