@@ -24,7 +24,7 @@ class CustomConfigurationClass {
     var clientCacheTimeout: Int = 60
     var ioDispatcherThreadPoolSize: Int = 10
     var schemaDefinitionLink: String = ""
-    val protoCompileDirectory: String = "src/main/resources/protobuf"
+    val tempFileRootDirectory: String = "/tmp"
     val namespace: String = "th2-qa"
     val actTypes: Set<String> = setOf("th2-act")
     val schemaCacheExpiry = 24 * 60 * 60
@@ -37,7 +37,7 @@ class CustomConfigurationClass {
     val sessions = emptySet<String>()
 
     override fun toString(): String {
-        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaDefinitionLink='$schemaDefinitionLink', protoCompileDirectory='$protoCompileDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaDescriptorsLink='$schemaDescriptorsLink', descriptorsCacheExpiry=$descriptorsCacheExpiry, sessions=$sessions)"
+        return "CustomConfigurationClass(hostname='$hostname', port=$port, responseTimeout=$responseTimeout, clientCacheTimeout=$clientCacheTimeout, ioDispatcherThreadPoolSize=$ioDispatcherThreadPoolSize, schemaDefinitionLink='$schemaDefinitionLink', protoCompileDirectory='$tempFileRootDirectory', namespace='$namespace', actTypes=$actTypes, schemaCacheExpiry=$schemaCacheExpiry, protoCacheExpiry=$protoCacheExpiry, protoCacheSize=$protoCacheSize, getSchemaRetryCount=$getSchemaRetryCount, getSchemaRetryDelay=$getSchemaRetryDelay, schemaDescriptorsLink='$schemaDescriptorsLink', descriptorsCacheExpiry=$descriptorsCacheExpiry, sessions=$sessions)"
     }
 }
 
@@ -66,8 +66,8 @@ class Configuration(customConfiguration: CustomConfigurationClass) {
         "schemaProtoLink", customConfiguration.schemaDescriptorsLink, ""
     )
 
-    val protoCompileDirectory: Variable = Variable(
-        "protoCompileDirectory", customConfiguration.protoCompileDirectory, "src/main/resources/protobuf"
+    val tempFileRootDirectory: Variable = Variable(
+        "tempFileRootDirectory", customConfiguration.tempFileRootDirectory, "/tmp"
     )
 
     val namespace: Variable = Variable("namespace", customConfiguration.namespace, "th2-qa")
