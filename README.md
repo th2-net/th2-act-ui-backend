@@ -502,6 +502,10 @@ Make sure that target act component's box type `spec: type: th2-act` matches one
 
 ## Release notes
 
+### 1.0.8
+
++ Updated dependencies
+
 ### 0.3.3
 
 #### Changed:

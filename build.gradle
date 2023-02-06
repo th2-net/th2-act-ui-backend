@@ -19,39 +19,74 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.3.71'
     id 'application'
     id 'com.palantir.docker' version '0.25.0'
+    id "org.owasp.dependencycheck" version "7.4.4"
 }
 
 ext {
     dockerImageVersion = release_version
-    ktorVersion = "1.5.2"
+    ktorVersion = "1.6.8"
 }
 
 group 'com.exactpro.th2'
 version release_version
 
+ext.excludeSailfish = { rcd ->
+    rcd.excludeModule("com.exactpro.sf", "sailfish-core")
+    rcd.excludeModule("com.exactpro.sf", "sailfish-common")
+    rcd.excludeModule("com.exactpro.sf", "sailfish-rest-api-client")
+    rcd.excludeModule("com.exactpro.sf", "service-http")
+}
+
 repositories {
-    mavenCentral()
-    jcenter()
 
     maven {
         name 'Sonatype_snapshots'
         url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+        content {
+            excludeSailfish(it)
+        }
+    }
+    // ignoreGradleMetadataRedirection is used for sonatype because
+    // Sailfish dependencies have constrains that interfere with our BOM
+    // so we exclude Gradle metadata for this repositories.
+    // We've checked these versions - they are compatible and safe to use
+    maven {
+        name 'Sonatype_snapshots'
+        url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+        metadataSources {
+            mavenPom()
+            artifact()
+            ignoreGradleMetadataRedirection()
+        }
     }
     maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
+        content {
+            excludeSailfish(it)
+        }
     }
+    maven {
+        name 'Sonatype_releases'
+        url 'https://s01.oss.sonatype.org/content/repositories/releases/'
+        metadataSources {
+            mavenPom()
+            artifact()
+            ignoreGradleMetadataRedirection()
+        }
+    }
+    mavenCentral()
+    jcenter()
+    mavenLocal()
 }
 
 dependencies {
-    api platform('com.exactpro.th2:bom:3.0.0')
+    api platform('com.exactpro.th2:bom:4.1.0')
     implementation 'org.slf4j:slf4j-api'
-    implementation 'org.slf4j:slf4j-log4j12'
 
-
-    implementation 'com.exactpro.th2:grpc-common:3.1.2'
-    implementation 'com.exactpro.th2:common:3.13.4'
-    implementation "com.exactpro.th2:grpc-act-template:3.1.2"
+    implementation 'com.exactpro.th2:grpc-common:3.12.0'
+    implementation 'com.exactpro.th2:common:3.44.0'
+    implementation "com.exactpro.th2:grpc-act-template:3.10.0"
 
     implementation "com.google.protobuf:protobuf-java-util"
     implementation "io.grpc:grpc-protobuf"
@@ -71,7 +106,7 @@ dependencies {
     implementation "io.ktor:ktor-client-core:${ktorVersion}"
     implementation "io.ktor:ktor-client-cio:${ktorVersion}"
 
-    implementation group: 'com.exactpro.sf', name: 'sailfish-core', version: '3.2'
+    implementation group: 'com.exactpro.sf', name: 'sailfish-core', version: '3.3.54'
 
     implementation 'org.ehcache:ehcache:3.8.1'
 
