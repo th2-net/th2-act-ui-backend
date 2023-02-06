@@ -9,7 +9,7 @@ COPY ./ .
 COPY --from=gobuilder /compile ./src/main/resources
 RUN gradle --no-daemon clean build dockerPrepare -Prelease_version=${release_version}
 
-FROM adoptopenjdk/openjdk12:jdk-12.0.2_10-slim
+FROM adoptopenjdk/openjdk11:jdk-11.0.11_9-slim
 ENV CRADLE_INSTANCE_NAME=instance1 \
     CASSANDRA_DATA_CENTER=kos \
     CASSANDRA_HOST=cassandra \
