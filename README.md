@@ -493,7 +493,7 @@ First of all, it's looking for components that have a session according to the f
 
 The next step is to get all connected to previously found components and search for connected dictionaries. If the resulting list is empty, all dictionaries are returned.
 
-### Act mode additianal configuration
+### Act mode additional configuration
 
 To call act components from act-ui, gRPC descriptors need to be generated and attached as docker object lables. To generate the descriptors, add the following [plugin](https://github.com/th2-net/th2-box-descriptor-generator) to a build script and configure a CI job to attach them as docker labels. [This](https://github.com/th2-net/th2-act-template-j) is an example of a properly configured act component.
 
@@ -505,6 +505,7 @@ Make sure that target act component's box type `spec: type: th2-act` matches one
 ### 1.0.8
 
 + Updated dependencies
++ Added vulnerabilities check
 
 ### 0.3.3
 
