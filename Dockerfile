@@ -3,7 +3,7 @@ WORKDIR /compile
 RUN export PATH=$PATH:$(go env GOPATH)/bin
 RUN GO111MODULE=on GOBIN=`pwd` go install github.com/chrusty/protoc-gen-jsonschema/cmd/protoc-gen-jsonschema@1.1.1
 
-FROM gradle:7.5.1-jdk11 AS build
+FROM gradle:7.6-jdk11 AS build
 ARG release_version=0.0.0
 COPY ./ .
 COPY --from=gobuilder /compile ./src/main/resources
