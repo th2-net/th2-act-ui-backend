@@ -40,23 +40,16 @@ import java.io.IOException
 
 
 class RabbitMqService(
-    private val context: Context,
     private val messageRouterParsedBatch: MessageRouter<MessageBatch>,
-    private val eventRouter: MessageRouter<EventBatch>
+    private val eventRouter: MessageRouter<EventBatch>,
+    rootEventID: EventID
 ) {
 
     companion object {
         val logger = KotlinLogging.logger { }
     }
 
-    private val actName = "act-ui messages"
-    private val description = "act-ui root event"
-
-    private val configuration = context.configuration
-
-    val parentEventId = runBlocking {
-        createAndStoreEvent(actName, null, description, PASSED, "act-ui", null)
-    }
+    val parentEventId = rootEventID
 
     private fun sendMessage(message: Message, sessionAlias: String?, parentEventId: EventID) {
         try {
@@ -77,7 +70,7 @@ class RabbitMqService(
     @Throws(JsonProcessingException::class, InvalidRequestException::class)
     suspend fun createAndStoreEvent(
         name: String,
-        parentEventId: String?,
+        parentEventId: String,
         description: String,
         status: Event.Status,
         type: String,
@@ -98,7 +91,7 @@ class RabbitMqService(
                 }
                 .endTimestamp()
 
-            val protoEvent = event.toProtoEvent(parentEventId)
+            val protoEvent = event.toProto(parentEventId)
             try {
                 eventRouter.send(
                     EventBatch.newBuilder().addEvents(protoEvent).build(), "publish", "event"

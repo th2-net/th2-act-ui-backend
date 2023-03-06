@@ -100,7 +100,11 @@ class Main {
         protoSchemaCache = ProtoSchemaCache(applicationContext, serviceProtoLoader, schemaParser)
         messageValidator = MessageValidator(schemaParser)
 
-        rabbitMqService = RabbitMqService(applicationContext, messageRouterParsedBatch, eventRouter)
+        rabbitMqService = RabbitMqService(
+            messageRouterParsedBatch,
+            eventRouter,
+            configurationFactory.rootEventId
+        )
         actGrpcService = GrpcService(applicationContext, protoSchemaCache, schemaParser)
         messageService = MessageSendService(rabbitMqService, actGrpcService, applicationContext)
         cacheControl = applicationContext.cacheControl
