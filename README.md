@@ -1,4 +1,4 @@
-# Act-ui backend ( 1.0.9 )
+# Act-ui backend ( 2.0.0 )
 
 # Overview
 This is a backend component for the [act-ui](https://github.com/th2-net/th2-act-ui) web app. Act-ui backend provides autocompletion data and enables communication with th2 infrastructure. To function properly, conn (or codec) components need to be connected to it.
@@ -501,6 +501,10 @@ Make sure that target act component's box type `spec: type: th2-act` matches one
 
 
 ## Release notes
+
+### 2.0.0
+
++ migration to books & pages concept
 
 ### 1.0.8
 
