@@ -1,6 +1,5 @@
 *.bin
 .gradle
-gradle
 
 #elcipse files
 .metadata
